@@ -5,13 +5,23 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
+import Dashboard from "./pages/Dashboard";
+import Tarot from "./pages/Tarot";
+import Dreams from "./pages/Dreams";
+import Radinic from "./pages/Radinic";
+import Energy from "./pages/Energy";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
-      <Route path={"/"} component={Home} />
-      <Route path={"/404"} component={NotFound} />
+      <Route path="/" component={Home} />
+      <Route path="/dashboard" component={Dashboard} />
+      <Route path="/tarot" component={Tarot} />
+      <Route path="/dreams" component={Dreams} />
+      <Route path="/radinic" component={Radinic} />
+      <Route path="/energy" component={Energy} />
+      <Route path="/404" component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
     </Switch>
@@ -27,7 +37,7 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider
-        defaultTheme="light"
+        defaultTheme="dark"
         // switchable
       >
         <TooltipProvider>
@@ -40,3 +50,4 @@ function App() {
 }
 
 export default App;
+

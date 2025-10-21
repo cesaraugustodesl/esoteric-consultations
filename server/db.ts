@@ -1,6 +1,14 @@
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import {
+  InsertUser,
+  users,
+  tarotConsultations,
+  dreamInterpretations,
+  radinicTables,
+  energyGuidance,
+  payments,
+} from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -85,4 +93,239 @@ export async function getUser(id: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+/**
+ * Tarot Consultations
+ */
+export async function createTarotConsultation(
+  userId: string,
+  questions: string[],
+  numberOfQuestions: number,
+  price: string
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const id = crypto.randomUUID();
+  await db.insert(tarotConsultations).values({
+    id,
+    userId,
+    questions: JSON.stringify(questions),
+    responses: JSON.stringify([]),
+    numberOfQuestions,
+    price,
+    paymentStatus: "pending",
+    status: "pending",
+  });
+
+  return id;
+}
+
+export async function getTarotConsultation(id: string) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const result = await db
+    .select()
+    .from(tarotConsultations)
+    .where(eq(tarotConsultations.id, id))
+    .limit(1);
+
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function updateTarotConsultation(
+  id: string,
+  updates: {
+    responses?: string[];
+    paymentStatus?: "pending" | "completed" | "failed";
+    status?: "pending" | "completed" | "archived";
+    paymentId?: string;
+    completedAt?: Date;
+  }
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const updateData: any = {};
+  if (updates.responses) updateData.responses = JSON.stringify(updates.responses);
+  if (updates.paymentStatus) updateData.paymentStatus = updates.paymentStatus;
+  if (updates.status) updateData.status = updates.status;
+  if (updates.paymentId) updateData.paymentId = updates.paymentId;
+  if (updates.completedAt) updateData.completedAt = updates.completedAt;
+
+  await db
+    .update(tarotConsultations)
+    .set(updateData)
+    .where(eq(tarotConsultations.id, id));
+}
+
+export async function getUserTarotConsultations(userId: string) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db
+    .select()
+    .from(tarotConsultations)
+    .where(eq(tarotConsultations.userId, userId))
+    .orderBy(desc(tarotConsultations.createdAt));
+}
+
+/**
+ * Dream Interpretations
+ */
+export async function createDreamInterpretation(
+  userId: string,
+  dreamDescription: string,
+  interpretation: string,
+  symbols: string[]
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const id = crypto.randomUUID();
+  await db.insert(dreamInterpretations).values({
+    id,
+    userId,
+    dreamDescription,
+    interpretation,
+    symbols: JSON.stringify(symbols),
+  });
+
+  return id;
+}
+
+export async function getUserDreamInterpretations(userId: string) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db
+    .select()
+    .from(dreamInterpretations)
+    .where(eq(dreamInterpretations.userId, userId))
+    .orderBy(desc(dreamInterpretations.createdAt));
+}
+
+/**
+ * Radinic Tables
+ */
+export async function createRadinicTable(
+  userId: string,
+  question: string,
+  response: string,
+  energyFrequency?: string
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const id = crypto.randomUUID();
+  await db.insert(radinicTables).values({
+    id,
+    userId,
+    question,
+    response,
+    energyFrequency,
+  });
+
+  return id;
+}
+
+export async function getUserRadinicTables(userId: string) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db
+    .select()
+    .from(radinicTables)
+    .where(eq(radinicTables.userId, userId))
+    .orderBy(desc(radinicTables.createdAt));
+}
+
+/**
+ * Energy Guidance
+ */
+export async function createEnergyGuidance(
+  userId: string,
+  topic: string,
+  guidance: string,
+  chakraFocus?: string
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const id = crypto.randomUUID();
+  await db.insert(energyGuidance).values({
+    id,
+    userId,
+    topic,
+    guidance,
+    chakraFocus,
+  });
+
+  return id;
+}
+
+export async function getUserEnergyGuidance(userId: string) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db
+    .select()
+    .from(energyGuidance)
+    .where(eq(energyGuidance.userId, userId))
+    .orderBy(desc(energyGuidance.createdAt));
+}
+
+/**
+ * Payments
+ */
+export async function createPayment(
+  userId: string,
+  consultationId: string,
+  amount: string,
+  paymentMethod: string
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const id = crypto.randomUUID();
+  await db.insert(payments).values({
+    id,
+    userId,
+    consultationId,
+    amount,
+    paymentMethod,
+    status: "pending",
+  });
+
+  return id;
+}
+
+export async function updatePayment(
+  id: string,
+  updates: {
+    status?: "pending" | "approved" | "failed" | "refunded";
+    externalPaymentId?: string;
+  }
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const updateData: any = {};
+  if (updates.status) updateData.status = updates.status;
+  if (updates.externalPaymentId) updateData.externalPaymentId = updates.externalPaymentId;
+
+  await db.update(payments).set(updateData).where(eq(payments.id, id));
+}
+
+export async function getPayment(id: string) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const result = await db
+    .select()
+    .from(payments)
+    .where(eq(payments.id, id))
+    .limit(1);
+
+  return result.length > 0 ? result[0] : null;
+}
