@@ -20,6 +20,7 @@ import {
 } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
+import { createPaymentPreference } from "./payment";
 
 export const appRouter = router({
   system: systemRouter,
@@ -309,6 +310,40 @@ Sua orientação deve:
    * Payments
    */
   payments: router({
+    createPaymentLink: protectedProcedure
+      .input(
+        z.object({
+          consultationId: z.string(),
+          amount: z.string(),
+          numberOfQuestions: z.number(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        try {
+          const preference = await createPaymentPreference(
+            input.consultationId,
+            [
+              {
+                title: `Leitura de Tarot - ${input.numberOfQuestions} pergunta(s)`,
+                quantity: 1,
+                unit_price: parseFloat(input.amount),
+                description: "Consulta esoterica com respostas profundas do plano espiritual",
+              },
+            ],
+            ctx.user.email || "user@example.com",
+            ctx.user.id
+          );
+
+          return {
+            paymentLink: preference.init_point,
+            preferenceId: preference.id,
+          };
+        } catch (error) {
+          console.error("Erro ao criar link de pagamento:", error);
+          throw new Error("Falha ao criar link de pagamento");
+        }
+      }),
+
     createPayment: protectedProcedure
       .input(
         z.object({

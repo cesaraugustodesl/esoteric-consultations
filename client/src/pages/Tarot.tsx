@@ -17,6 +17,7 @@ export default function Tarot() {
 
   const createConsultation = trpc.tarot.createConsultation.useMutation();
   const generateResponses = trpc.tarot.generateResponses.useMutation();
+  const createPaymentLink = trpc.payments.createPaymentLink.useMutation();
   const getConsultation = trpc.tarot.getConsultation.useQuery(
     { id: consultationId || "" },
     { enabled: !!consultationId && submitted }
@@ -218,8 +219,27 @@ export default function Tarot() {
                         R$ {getConsultation.data?.price}
                       </p>
                     </div>
-                    <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
-                      Pagar Agora
+                    <Button
+                      onClick={async () => {
+                        if (!getConsultation.data) return;
+                        try {
+                          const result = await createPaymentLink.mutateAsync({
+                            consultationId: getConsultation.data.id,
+                            amount: getConsultation.data.price,
+                            numberOfQuestions: getConsultation.data.numberOfQuestions,
+                          });
+                          if (result.paymentLink) {
+                            window.location.href = result.paymentLink;
+                          }
+                        } catch (error) {
+                          console.error("Erro ao redirecionar para pagamento:", error);
+                          alert("Erro ao processar pagamento. Tente novamente.");
+                        }
+                      }}
+                      disabled={createPaymentLink.isPending}
+                      className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                    >
+                      {createPaymentLink.isPending ? "Processando..." : "Pagar Agora"}
                     </Button>
                   </div>
                 </Card>
