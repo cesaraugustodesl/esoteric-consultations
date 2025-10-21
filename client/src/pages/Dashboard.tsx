@@ -76,6 +76,24 @@ export default function Dashboard() {
                     Leitura de Tarot
                   </Button>
                 </Link>
+                <Link href="/astral">
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start text-yellow-200 hover:bg-yellow-900/30 hover:text-yellow-100"
+                  >
+                    <Sparkles className="w-4 h-4 mr-3" />
+                    Mapa Astral
+                  </Button>
+                </Link>
+                <Link href="/oracle">
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start text-cyan-200 hover:bg-cyan-900/30 hover:text-cyan-100"
+                  >
+                    <Sparkles className="w-4 h-4 mr-3" />
+                    Oráculos
+                  </Button>
+                </Link>
               </div>
 
               <div>
@@ -91,15 +109,7 @@ export default function Dashboard() {
                     Interpretação de Sonhos
                   </Button>
                 </Link>
-                <Link href="/radinic">
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start text-indigo-200 hover:bg-indigo-900/30 hover:text-indigo-100"
-                  >
-                    <Zap className="w-4 h-4 mr-3" />
-                    Mesas Radiônicas
-                  </Button>
-                </Link>
+
                 <Link href="/energy">
                   <Button
                     variant="ghost"

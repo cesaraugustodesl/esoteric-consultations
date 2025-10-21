@@ -5,7 +5,8 @@ import {
   users,
   tarotConsultations,
   dreamInterpretations,
-  radinicTables,
+  astralMaps,
+  oracles,
   energyGuidance,
   payments,
 } from "../drizzle/schema";
@@ -208,38 +209,89 @@ export async function getUserDreamInterpretations(userId: string) {
 }
 
 /**
- * Radinic Tables
+ * Astral Maps
  */
-export async function createRadinicTable(
+export async function createAstralMap(
   userId: string,
-  question: string,
-  response: string,
-  energyFrequency?: string
+  birthDate: string,
+  birthTime: string,
+  birthLocation: string,
+  mapData: any,
+  interpretation: string,
+  packageType: "basic" | "premium",
+  price: string
 ) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
   const id = crypto.randomUUID();
-  await db.insert(radinicTables).values({
+  await db.insert(astralMaps).values({
     id,
     userId,
-    question,
-    response,
-    energyFrequency,
+    birthDate,
+    birthTime,
+    birthLocation,
+    mapData: JSON.stringify(mapData),
+    interpretation,
+    packageType,
+    price,
+    paymentStatus: "pending",
   });
 
   return id;
 }
 
-export async function getUserRadinicTables(userId: string) {
+export async function getUserAstralMaps(userId: string) {
   const db = await getDb();
   if (!db) return [];
 
   return await db
     .select()
-    .from(radinicTables)
-    .where(eq(radinicTables.userId, userId))
-    .orderBy(desc(radinicTables.createdAt));
+    .from(astralMaps)
+    .where(eq(astralMaps.userId, userId))
+    .orderBy(desc(astralMaps.createdAt));
+}
+
+/**
+ * Oracles
+ */
+export async function createOracle(
+  userId: string,
+  oracleType: string,
+  question: string,
+  numberOfSymbols: number,
+  symbols: string[],
+  interpretations: string[],
+  price: string
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const id = crypto.randomUUID();
+  await db.insert(oracles).values({
+    id,
+    userId,
+    oracleType,
+    question,
+    numberOfSymbols,
+    symbols: JSON.stringify(symbols),
+    interpretations: JSON.stringify(interpretations),
+    price,
+    paymentStatus: "pending",
+  });
+
+  return id;
+}
+
+export async function getUserOracles(userId: string) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db
+    .select()
+    .from(oracles)
+    .where(eq(oracles.userId, userId))
+    .orderBy(desc(oracles.createdAt));
 }
 
 /**

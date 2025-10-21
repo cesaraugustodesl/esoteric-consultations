@@ -10,8 +10,10 @@ import {
   getUserTarotConsultations,
   createDreamInterpretation,
   getUserDreamInterpretations,
-  createRadinicTable,
-  getUserRadinicTables,
+  createAstralMap,
+  getUserAstralMaps,
+  createOracle,
+  getUserOracles,
   createEnergyGuidance,
   getUserEnergyGuidance,
   createPayment,
@@ -83,15 +85,6 @@ export const appRouter = router({
         };
       }),
 
-    listConsultations: protectedProcedure.query(async ({ ctx }) => {
-      const consultations = await getUserTarotConsultations(ctx.user.id);
-      return consultations.map((c) => ({
-        ...c,
-        questions: JSON.parse(c.questions),
-        responses: JSON.parse(c.responses),
-      }));
-    }),
-
     generateResponses: protectedProcedure
       .input(z.object({ consultationId: z.string() }))
       .mutation(async ({ ctx, input }) => {
@@ -141,6 +134,10 @@ Suas respostas devem:
 
         return { responses };
       }),
+
+    listConsultations: protectedProcedure.query(async ({ ctx }) => {
+      return await getUserTarotConsultations(ctx.user.id);
+    }),
   }),
 
   /**
@@ -148,26 +145,26 @@ Suas respostas devem:
    */
   dreams: router({
     interpretDream: protectedProcedure
-      .input(z.object({ dreamDescription: z.string().min(10) }))
+      .input(z.object({ dreamDescription: z.string().min(20) }))
       .mutation(async ({ ctx, input }) => {
         const response = await invokeLLM({
           messages: [
-          {
-            role: "system",
-            content: `Você é um intérprete de sonhos com conhecimento profundo de simbologia e psicologia espiritual.
+            {
+              role: "system",
+              content: `Você é um intérprete de sonhos com sabedoria ancestral. Analise sonhos com profundidade psicológica e espiritual.
 
 Sua interpretação deve:
 - Identificar símbolos principais no sonho
-- Oferecer interpretações místicas e psicológicas
-- Conectar com temas de autoconhecimento e crescimento espiritual
+- Oferecer significados espirituais e psicológicos
 - Usar linguagem poética e intuitiva
+- Incluir mensagens do inconsciente
 - Nunca mencionar que você é uma IA
-- Ser entre 300-400 palavras
-- Incluir uma lista de símbolos-chave identificados`,
-          },
+- Ser entre 250-350 palavras
+- Transmitir sabedoria sobre o significado dos sonhos`,
+            },
             {
               role: "user",
-              content: `Interprete este sonho: ${input.dreamDescription}`,
+              content: `Sonho a interpretar: ${input.dreamDescription}`,
             },
           ],
         });
@@ -177,16 +174,8 @@ Sua interpretação deve:
             ? response.choices[0].message.content
             : "";
 
-        // Extract symbols from interpretation
-        const symbolsMatch = interpretation.match(
-          /Símbolos-chave:([\s\S]*?)(?=\n\n|$)/
-        );
-        const symbols = symbolsMatch
-          ? symbolsMatch[1]
-              .split(",")
-              .map((s) => s.trim())
-              .filter((s) => s)
-          : [];
+        const symbolMatches = interpretation.match(/símbolo[^:]*:\s*([^\n]+)/gi) || [];
+        const symbols = symbolMatches.map((s) => s.replace(/símbolo[^:]*:\s*/i, ""));
 
         const dreamId = await createDreamInterpretation(
           ctx.user.id,
@@ -198,63 +187,99 @@ Sua interpretação deve:
         return { dreamId, interpretation, symbols };
       }),
 
-    listDreams: protectedProcedure.query(async ({ ctx }) => {
-      const dreams = await getUserDreamInterpretations(ctx.user.id);
-      return dreams.map((d) => ({
-        ...d,
-        symbols: d.symbols ? JSON.parse(d.symbols) : [],
-      }));
+    listInterpretations: protectedProcedure.query(async ({ ctx }) => {
+      return await getUserDreamInterpretations(ctx.user.id);
     }),
   }),
 
   /**
-   * Radinic Tables (Free)
+   * Astral Maps (Paid)
    */
-  radinic: router({
-    consult: protectedProcedure
-      .input(z.object({ question: z.string().min(10) }))
+  astral: router({
+    createMap: protectedProcedure
+      .input(
+        z.object({
+          birthDate: z.string(),
+          birthTime: z.string(),
+          birthLocation: z.string(),
+          packageType: z.enum(["basic", "premium"]),
+        })
+      )
       .mutation(async ({ ctx, input }) => {
-        const response = await invokeLLM({
-          messages: [
-            {
-              role: "system",
-              content: `Você é um especialista em radiônica e energias vibracionais. Responda consultas sobre radiônica com profundidade espiritual.
+        const prices: Record<string, string> = {
+          basic: "30.00",
+          premium: "50.00",
+        };
 
-Sua resposta deve:
-- Explicar a frequência energética relacionada à pergunta
-- Oferecer orientação baseada em princípios radiônicos
-- Usar linguagem mística e intuitiva
-- Incluir recomendações para harmonização energética
-- Nunca mencionar que você é uma IA
-- Ser entre 250-350 palavras
-- Transmitir sabedoria sobre energias e vibrações`,
-            },
-            {
-              role: "user",
-              content: `Consulta radiônica: ${input.question}`,
-            },
-          ],
-        });
+        const price = prices[input.packageType];
 
-        const responseText =
-          typeof response.choices[0].message.content === "string"
-            ? response.choices[0].message.content
-            : "";
-        const frequencyMatch = responseText.match(/frequência[^:]*:\s*([^\n]+)/i);
-        const energyFrequency = frequencyMatch ? frequencyMatch[1].trim() : "Frequência Harmônica";
-
-        const radinicId = await createRadinicTable(
+        const mapId = await createAstralMap(
           ctx.user.id,
-          input.question,
-          responseText,
-          energyFrequency
+          input.birthDate,
+          input.birthTime,
+          input.birthLocation,
+          {},
+          "",
+          input.packageType,
+          price
         );
 
-        return { radinicId, response: responseText, energyFrequency };
+        return { mapId, price };
+      }),
+
+    generateMap: protectedProcedure
+      .input(z.object({ mapId: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        return { success: true };
+      }),
+
+    listMaps: protectedProcedure.query(async ({ ctx }) => {
+      return await getUserAstralMaps(ctx.user.id);
+    }),
+  }),
+
+  /**
+   * Oracles (Paid)
+   */
+  oracle: router({
+    createConsult: protectedProcedure
+      .input(
+        z.object({
+          oracleType: z.enum(["runas", "anjos", "buzios"]),
+          question: z.string().min(10),
+          numberOfSymbols: z.number().min(1).max(5),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const prices: Record<number, string> = {
+          1: "5.00",
+          3: "12.00",
+          5: "20.00",
+        };
+
+        const price = prices[input.numberOfSymbols] || "0.00";
+
+        const oracleId = await createOracle(
+          ctx.user.id,
+          input.oracleType,
+          input.question,
+          input.numberOfSymbols,
+          [],
+          [],
+          price
+        );
+
+        return { oracleId, price };
+      }),
+
+    generateInterpretation: protectedProcedure
+      .input(z.object({ oracleId: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        return { success: true };
       }),
 
     listConsults: protectedProcedure.query(async ({ ctx }) => {
-      return await getUserRadinicTables(ctx.user.id);
+      return await getUserOracles(ctx.user.id);
     }),
   }),
 
@@ -277,12 +302,12 @@ Sua orientação deve:
 - Oferecer práticas de harmonização energética
 - Usar linguagem poética e intuitiva
 - Nunca mencionar que você é uma IA
-- Ser entre 250-350 palavras
-- Transmitir sabedoria transformadora`,
+- Ser entre 200-300 palavras
+- Transmitir sabedoria sobre energias e transformação`,
             },
             {
               role: "user",
-              content: `Orientação energética sobre: ${input.topic}`,
+              content: `Tópico para orientação energética: ${input.topic}`,
             },
           ],
         });
@@ -401,9 +426,9 @@ Sua orientação deve:
       }),
 
     getPayment: protectedProcedure
-      .input(z.object({ id: z.string() }))
+      .input(z.object({ paymentId: z.string() }))
       .query(async ({ ctx, input }) => {
-        const payment = await getPayment(input.id);
+        const payment = await getPayment(input.paymentId);
         if (!payment || payment.userId !== ctx.user.id) {
           return null;
         }

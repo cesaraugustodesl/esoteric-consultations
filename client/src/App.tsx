@@ -8,7 +8,8 @@ import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Tarot from "./pages/Tarot";
 import Dreams from "./pages/Dreams";
-import Radinic from "./pages/Radinic";
+import Astral from "./pages/Astral";
+import Oracle from "./pages/Oracle";
 import Energy from "./pages/Energy";
 
 function Router() {
@@ -19,7 +20,8 @@ function Router() {
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/tarot" component={Tarot} />
       <Route path="/dreams" component={Dreams} />
-      <Route path="/radinic" component={Radinic} />
+      <Route path="/astral" component={Astral} />
+      <Route path="/oracle" component={Oracle} />
       <Route path="/energy" component={Energy} />
       <Route path="/404" component={NotFound} />
       {/* Final fallback route */}

@@ -14,7 +14,7 @@ export default function Dreams() {
   const [dreamId, setDreamId] = useState<string | null>(null);
 
   const interpretDream = trpc.dreams.interpretDream.useMutation();
-  const listDreams = trpc.dreams.listDreams.useQuery();
+  const listDreams = trpc.dreams.listInterpretations.useQuery();
 
   const handleSubmit = async () => {
     if (!dreamDescription.trim()) {
@@ -127,16 +127,16 @@ export default function Dreams() {
               <h3 className="text-lg font-bold mb-4">Histórico de Sonhos</h3>
               {listDreams.data && listDreams.data.length > 0 ? (
                 <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {listDreams.data.map((dream) => (
+                  {listDreams.data.map((dream: any) => (
                     <div
                       key={dream.id}
-                      className="p-3 bg-indigo-950/50 rounded-lg border border-indigo-500/20 hover:border-indigo-400/50 transition-all cursor-pointer"
+                      className="p-3 bg-blue-950/50 rounded-lg border border-blue-500/20 hover:border-blue-400/50 transition-all cursor-pointer"
                       title={dream.dreamDescription}
                     >
-                      <p className="text-sm text-indigo-200 line-clamp-2">
+                      <p className="text-sm text-blue-200 line-clamp-2">
                         {dream.dreamDescription}
                       </p>
-                      <p className="text-xs text-indigo-400 mt-2">
+                      <p className="text-xs text-blue-400 mt-2">
                         {dream.createdAt ? new Date(dream.createdAt).toLocaleDateString("pt-BR") : ""}
                       </p>
                     </div>

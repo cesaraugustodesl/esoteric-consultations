@@ -49,14 +49,35 @@ export const dreamInterpretations = mysqlTable("dream_interpretations", {
 });
 
 /**
- * Mesas Radiônicas (gratuitas)
+ * Mapa Astral (pago)
  */
-export const radinicTables = mysqlTable("radinic_tables", {
+export const astralMaps = mysqlTable("astral_maps", {
   id: varchar("id", { length: 64 }).primaryKey(),
   userId: varchar("userId", { length: 64 }).notNull(),
+  birthDate: varchar("birthDate", { length: 10 }).notNull(), // YYYY-MM-DD
+  birthTime: varchar("birthTime", { length: 5 }).notNull(), // HH:MM
+  birthLocation: varchar("birthLocation", { length: 255 }).notNull(),
+  mapData: text("mapData").notNull(), // JSON com dados do mapa
+  interpretation: text("interpretation").notNull(),
+  packageType: mysqlEnum("packageType", ["basic", "premium"]).default("basic"),
+  price: varchar("price", { length: 10 }).notNull(),
+  paymentStatus: mysqlEnum("paymentStatus", ["pending", "completed", "failed"]).default("pending"),
+  createdAt: timestamp("createdAt").defaultNow(),
+});
+
+/**
+ * Oráculos (pago)
+ */
+export const oracles = mysqlTable("oracles", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  userId: varchar("userId", { length: 64 }).notNull(),
+  oracleType: varchar("oracleType", { length: 64 }).notNull(), // runas, anjos, buzios
   question: text("question").notNull(),
-  response: text("response").notNull(),
-  energyFrequency: varchar("energyFrequency", { length: 255 }),
+  numberOfSymbols: int("numberOfSymbols").notNull(),
+  symbols: text("symbols").notNull(), // JSON array
+  interpretations: text("interpretations").notNull(), // JSON array
+  price: varchar("price", { length: 10 }).notNull(),
+  paymentStatus: mysqlEnum("paymentStatus", ["pending", "completed", "failed"]).default("pending"),
   createdAt: timestamp("createdAt").defaultNow(),
 });
 
@@ -93,8 +114,11 @@ export type InsertTarotConsultation = typeof tarotConsultations.$inferInsert;
 export type DreamInterpretation = typeof dreamInterpretations.$inferSelect;
 export type InsertDreamInterpretation = typeof dreamInterpretations.$inferInsert;
 
-export type RadinicTable = typeof radinicTables.$inferSelect;
-export type InsertRadinicTable = typeof radinicTables.$inferInsert;
+export type AstralMap = typeof astralMaps.$inferSelect;
+export type InsertAstralMap = typeof astralMaps.$inferInsert;
+
+export type Oracle = typeof oracles.$inferSelect;
+export type InsertOracle = typeof oracles.$inferInsert;
 
 export type EnergyGuidance = typeof energyGuidance.$inferSelect;
 export type InsertEnergyGuidance = typeof energyGuidance.$inferInsert;

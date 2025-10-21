@@ -58,7 +58,7 @@ export default function Home() {
         </div>
 
         {/* Services Grid */}
-        <div className="grid md:grid-cols-2 gap-8 mb-20">
+        <div className="grid md:grid-cols-3 gap-8 mb-20">
           {/* Tarot Paid */}
           <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-900/40 to-pink-900/40 border border-purple-500/30 p-8 hover:border-purple-400/60 transition-all">
             <div className="absolute inset-0 bg-gradient-to-br from-purple-600/0 to-pink-600/0 group-hover:from-purple-600/10 group-hover:to-pink-600/10 transition-all" />
@@ -86,7 +86,60 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Free Services */}
+          {/* Astral Maps Paid */}
+          <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-yellow-900/40 to-orange-900/40 border border-yellow-500/30 p-8 hover:border-yellow-400/60 transition-all">
+            <div className="absolute inset-0 bg-gradient-to-br from-yellow-600/0 to-orange-600/0 group-hover:from-yellow-600/10 group-hover:to-orange-600/10 transition-all" />
+            <div className="relative z-10">
+              <div className="flex items-center gap-3 mb-4">
+                <Sparkles className="w-8 h-8 text-yellow-400" />
+                <h2 className="text-2xl font-bold">Mapa Astral</h2>
+              </div>
+              <p className="text-yellow-200 mb-6">
+                Descubra os mistérios do universo no momento do seu nascimento. Signos, planetas e tendências.
+              </p>
+              <div className="space-y-2 mb-6 text-sm text-yellow-300">
+                <p>✨ Básico - R$ 30,00</p>
+                <p>✨ Premium - R$ 50,00</p>
+              </div>
+              {isAuthenticated && (
+                <Link href="/astral">
+                  <Button className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700">
+                    Gerar Mapa
+                  </Button>
+                </Link>
+              )}
+            </div>
+          </div>
+
+          {/* Oracles Paid */}
+          <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-cyan-900/40 to-blue-900/40 border border-cyan-500/30 p-8 hover:border-cyan-400/60 transition-all">
+            <div className="absolute inset-0 bg-gradient-to-br from-cyan-600/0 to-blue-600/0 group-hover:from-cyan-600/10 group-hover:to-blue-600/10 transition-all" />
+            <div className="relative z-10">
+              <div className="flex items-center gap-3 mb-4">
+                <Sparkles className="w-8 h-8 text-cyan-400" />
+                <h2 className="text-2xl font-bold">Oráculos</h2>
+              </div>
+              <p className="text-cyan-200 mb-6">
+                Runas, Anjos e Búzios revelam mensagens do universo através de símbolos sagrados.
+              </p>
+              <div className="space-y-2 mb-6 text-sm text-cyan-300">
+                <p>🔮 1 símbolo - R$ 5,00</p>
+                <p>🔮 3 símbolos - R$ 12,00</p>
+                <p>🔮 5 símbolos - R$ 20,00</p>
+              </div>
+              {isAuthenticated && (
+                <Link href="/oracle">
+                  <Button className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700">
+                    Consultar Oráculo
+                  </Button>
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Free Services */}
+        <div className="grid md:grid-cols-2 gap-8 mb-20">
           <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-indigo-900/40 to-blue-900/40 border border-indigo-500/30 p-8 hover:border-indigo-400/60 transition-all">
             <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/0 to-blue-600/0 group-hover:from-indigo-600/10 group-hover:to-blue-600/10 transition-all" />
             <div className="relative z-10">
@@ -95,15 +148,15 @@ export default function Home() {
                 <h2 className="text-2xl font-bold">Serviços Gratuitos</h2>
               </div>
               <p className="text-indigo-200 mb-6">
-                Explore orientações espirituais, interpretações de sonhos e mesas radiônicas sem custo.
+                Explore orientações espirituais e interpretações de sonhos sem custo.
               </p>
               <div className="space-y-2 mb-6 text-sm text-indigo-300">
                 <p>🌙 Interpretação de Sonhos</p>
-                <p>⚡ Mesas Radiônicas</p>
+
                 <p>💫 Orientações Energéticas</p>
               </div>
               {isAuthenticated && (
-                <Link href="/free-services">
+                <Link href="/dreams">
                   <Button className="w-full bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700">
                     Explorar Serviços
                   </Button>
