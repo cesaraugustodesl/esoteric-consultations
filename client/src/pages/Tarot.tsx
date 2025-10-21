@@ -10,6 +10,7 @@ import { trpc } from "@/lib/trpc";
 
 export default function Tarot() {
   const { user } = useAuth();
+  const [context, setContext] = useState("");
   const [numberOfQuestions, setNumberOfQuestions] = useState(1);
   const [questions, setQuestions] = useState<string[]>([""]);
   const [submitted, setSubmitted] = useState(false);
@@ -42,6 +43,10 @@ export default function Tarot() {
   };
 
   const handleSubmit = async () => {
+    if (!context.trim()) {
+      alert("Por favor, descreva o contexto da sua situacao");
+      return;
+    }
     const filledQuestions = questions.filter((q) => q.trim());
     if (filledQuestions.length === 0) {
       alert("Por favor, preencha pelo menos uma pergunta");
@@ -50,6 +55,7 @@ export default function Tarot() {
 
     try {
       const result = await createConsultation.mutateAsync({
+        context,
         questions: filledQuestions,
         numberOfQuestions: filledQuestions.length,
       });
@@ -96,6 +102,22 @@ export default function Tarot() {
       <main className="max-w-4xl mx-auto px-4 py-12">
         {!submitted ? (
           <div className="space-y-8">
+            {/* Context Input */}
+            <Card className="bg-purple-900/20 border-purple-500/30 p-8">
+              <h2 className="text-2xl font-bold mb-6">Contextualize sua Situacao</h2>
+              <p className="text-purple-200 mb-4">
+                Descreva brevemente a situacao ou area da vida sobre a qual deseja receber orientacao. 
+                Isso ajudara as cartas a fornecerem respostas mais profundas e personalizadas.
+              </p>
+              <Textarea
+                value={context}
+                onChange={(e) => setContext(e.target.value)}
+                placeholder="Ex: Estou em duvida sobre minha carreira e gostaria de entender melhor o caminho que devo seguir..."
+                className="bg-purple-950/50 border-purple-500/30 text-white placeholder-purple-400/50 focus:border-purple-400"
+                rows={4}
+              />
+            </Card>
+
             {/* Question Selection */}
             <Card className="bg-purple-900/20 border-purple-500/30 p-8">
               <h2 className="text-2xl font-bold mb-6">Quantas perguntas deseja fazer?</h2>

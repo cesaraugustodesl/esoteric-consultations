@@ -43,6 +43,7 @@ export const appRouter = router({
     createConsultation: protectedProcedure
       .input(
         z.object({
+          context: z.string().min(10),
           questions: z.array(z.string()).min(1).max(5),
           numberOfQuestions: z.number().min(1).max(5),
         })
@@ -59,6 +60,7 @@ export const appRouter = router({
 
         const consultationId = await createTarotConsultation(
           ctx.user.id,
+          input.context,
           input.questions,
           input.numberOfQuestions,
           price
@@ -99,6 +101,7 @@ export const appRouter = router({
         }
 
         const questions = JSON.parse(consultation.questions);
+        const context = consultation.context;
         const responses: string[] = [];
 
         for (const question of questions) {
@@ -119,7 +122,7 @@ Suas respostas devem:
               },
               {
                 role: "user",
-                content: `Pergunta para leitura de Tarot: ${question}`,
+                content: `Contexto da situação: ${context}\n\nPergunta para leitura de Tarot: ${question}`,
               },
             ],
           });

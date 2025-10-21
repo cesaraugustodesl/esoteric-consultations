@@ -24,6 +24,7 @@ export type InsertUser = typeof users.$inferInsert;
 export const tarotConsultations = mysqlTable("tarot_consultations", {
   id: varchar("id", { length: 64 }).primaryKey(),
   userId: varchar("userId", { length: 64 }).notNull(),
+  context: text("context").notNull(), // Contexto da situacao
   questions: text("questions").notNull(), // JSON array de perguntas
   responses: text("responses").notNull(), // JSON array de respostas
   numberOfQuestions: int("numberOfQuestions").notNull(),

@@ -1,0 +1,1 @@
+ALTER TABLE `tarot_consultations` ADD `context` text NOT NULL;

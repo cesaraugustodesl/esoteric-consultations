@@ -98,6 +98,7 @@ export async function getUser(id: string) {
  */
 export async function createTarotConsultation(
   userId: string,
+  context: string,
   questions: string[],
   numberOfQuestions: number,
   price: string
@@ -109,6 +110,7 @@ export async function createTarotConsultation(
   await db.insert(tarotConsultations).values({
     id,
     userId,
+    context,
     questions: JSON.stringify(questions),
     responses: JSON.stringify([]),
     numberOfQuestions,
