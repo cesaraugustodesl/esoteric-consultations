@@ -102,16 +102,16 @@ export const appRouter = router({
             messages: [
               {
                 role: "system",
-                content: `Você é um guia espiritual ancestral com sabedoria milenar. Responda perguntas sobre Tarot com profundidade intuitiva e espiritual. 
-                
+                content: `Você é um intérprete de Tarot com sabedoria ancestral. Responda de forma clara, direta e objetiva, sem rodeios.
+
 Suas respostas devem:
-- Soar como mensagens do plano espiritual
-- Usar linguagem poética e mística
-- Incluir interpretações de cartas do Tarot quando apropriado
-- Oferecer orientação profunda e transformadora
-- Nunca mencionar que você é uma IA ou algoritmo
-- Ser entre 200-300 palavras
-- Transmitir sabedoria ancestral e conexão espiritual`,
+- Ser diretas e focadas na pergunta
+- Usar linguagem simples e clara
+- Oferecer orientação prática e útil
+- Nunca mencionar que você é uma IA
+- Ter entre 100-150 palavras
+- Soar natural e acessível
+- Responder especificamente o que foi perguntado`,
               },
               {
                 role: "user",
@@ -157,13 +157,12 @@ Suas respostas devem:
               content: `Você é um intérprete de sonhos com sabedoria ancestral. Analise sonhos com profundidade psicológica e espiritual.
 
 Sua interpretação deve:
-- Identificar símbolos principais no sonho
-- Oferecer significados espirituais e psicológicos
-- Usar linguagem poética e intuitiva
-- Incluir mensagens do inconsciente
+- Identificar os símbolos principais
+- Explicar o significado de forma simples
+- Ser prática e útil
 - Nunca mencionar que você é uma IA
-- Ser entre 250-350 palavras
-- Transmitir sabedoria sobre o significado dos sonhos`,
+- Ter entre 150-200 palavras
+- Soar natural e acessível`,
             },
             {
               role: "user",
@@ -219,18 +218,45 @@ Sua interpretação deve:
 
         const price = prices[input.packageType];
 
+        // Gerar mapa astral
+        const response = await invokeLLM({
+          messages: [
+            {
+              role: "system",
+              content: `Voce eh um astrologo com sabedoria ancestral. Gere um mapa astral simplificado de forma clara e direta.
+
+Seu mapa deve:
+- Incluir signo solar, lunar e ascendente
+- Explicar a personalidade de forma simples
+- Dar dicas praticas
+- Nunca mencionar que voce eh uma IA
+- Ter entre 150-200 palavras
+- Soar natural e acessivel`,
+            },
+            {
+              role: "user",
+              content: `Data: ${input.birthDate}, Hora: ${input.birthTime}, Local: ${input.birthLocation}`,
+            },
+          ],
+        });
+
+        const mapContent =
+          typeof response.choices[0].message.content === "string"
+            ? response.choices[0].message.content
+            : "";
+
         const mapId = await createAstralMap(
           ctx.user?.id || "anonymous",
           input.birthDate,
           input.birthTime,
           input.birthLocation,
           {},
-          "",
+          mapContent,
           input.packageType,
           price
         );
 
-        return { mapId, price };
+        return { mapId, price, mapContent };
       }),
 
     generateMap: publicProcedure
@@ -268,17 +294,49 @@ Sua interpretação deve:
 
         const price = prices[input.numberOfSymbols] || "0.00";
 
+        const oracleNames: Record<string, string> = {
+          runas: "Runas",
+          anjos: "Anjos",
+          buzios: "Buzios",
+        };
+
+        const response = await invokeLLM({
+          messages: [
+            {
+              role: "system",
+              content: `Voce eh um interprete de ${oracleNames[input.oracleType]} com sabedoria ancestral. Responda de forma clara e direta.
+
+Sua resposta deve:
+- Selecionar ${input.numberOfSymbols} simbolo(s)
+- Explicar o significado de forma simples
+- Responder a pergunta de forma pratica
+- Nunca mencionar que voce eh uma IA
+- Ter entre 100-150 palavras
+- Soar natural e acessivel`,
+            },
+            {
+              role: "user",
+              content: `Pergunta: ${input.question}`,
+            },
+          ],
+        });
+
+        const interpretation =
+          typeof response.choices[0].message.content === "string"
+            ? response.choices[0].message.content
+            : "";
+
         const oracleId = await createOracle(
           ctx.user?.id || "anonymous",
           input.oracleType,
           input.question,
           input.numberOfSymbols,
           [],
-          [],
+          interpretation.split("\n"),
           price
         );
 
-        return { oracleId, price };
+        return { oracleId, price, interpretation };
       }),
 
     generateInterpretation: publicProcedure
@@ -309,13 +367,13 @@ Sua interpretação deve:
               content: `Você é um guia energético e espiritual com sabedoria ancestral. Ofereça orientações sobre energia, chakras e desenvolvimento espiritual.
 
 Sua orientação deve:
-- Abordar o tópico com profundidade espiritual
-- Incluir informações sobre chakras relevantes
-- Oferecer práticas de harmonização energética
-- Usar linguagem poética e intuitiva
+- Ser clara e direta
+- Abordar o tópico de forma prática
+- Incluir dicas úteis sobre chakras
+- Oferecer ações concretas
 - Nunca mencionar que você é uma IA
-- Ser entre 200-300 palavras
-- Transmitir sabedoria sobre energias e transformação`,
+- Ter entre 150-200 palavras
+- Soar natural e acessível`,
             },
             {
               role: "user",
