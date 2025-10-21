@@ -127,24 +127,49 @@ export default function Home() {
 
         {/* Free Services */}
         <div className="grid md:grid-cols-2 gap-8 mb-20">
-          <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-indigo-900/40 to-blue-900/40 border border-indigo-500/30 p-8 hover:border-indigo-400/60 transition-all">
-            <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/0 to-blue-600/0 group-hover:from-indigo-600/10 group-hover:to-blue-600/10 transition-all" />
+          {/* Dreams */}
+          <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-900/40 to-indigo-900/40 border border-blue-500/30 p-8 hover:border-blue-400/60 transition-all">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-600/0 to-indigo-600/0 group-hover:from-blue-600/10 group-hover:to-indigo-600/10 transition-all" />
             <div className="relative z-10">
               <div className="flex items-center gap-3 mb-4">
-                <Sparkles className="w-8 h-8 text-indigo-400" />
-                <h2 className="text-2xl font-bold">Serviços Gratuitos</h2>
+                <Moon className="w-8 h-8 text-blue-400" />
+                <h2 className="text-2xl font-bold">Interpretação de Sonhos</h2>
               </div>
-              <p className="text-indigo-200 mb-6">
-                Explore orientações espirituais e interpretações de sonhos sem custo.
+              <p className="text-blue-200 mb-6">
+                Descubra o significado profundo de seus sonhos. Explore símbolos, mensagens do inconsciente e orientações espirituais.
               </p>
-              <div className="space-y-2 mb-6 text-sm text-indigo-300">
-                <p>🌙 Interpretação de Sonhos</p>
-
-                <p>💫 Orientações Energéticas</p>
+              <div className="space-y-2 mb-6 text-sm text-blue-300">
+                <p>✨ Análise de símbolos</p>
+                <p>✨ Significados espirituais</p>
+                <p>✨ Mensagens do inconsciente</p>
               </div>
               <Link href="/dreams">
-                <Button className="w-full bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700">
-                  Explorar Serviços
+                <Button className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+                  Interpretar Sonho
+                </Button>
+              </Link>
+            </div>
+          </div>
+
+          {/* Energy */}
+          <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-pink-900/40 to-rose-900/40 border border-pink-500/30 p-8 hover:border-pink-400/60 transition-all">
+            <div className="absolute inset-0 bg-gradient-to-br from-pink-600/0 to-rose-600/0 group-hover:from-pink-600/10 group-hover:to-rose-600/10 transition-all" />
+            <div className="relative z-10">
+              <div className="flex items-center gap-3 mb-4">
+                <Heart className="w-8 h-8 text-pink-400" />
+                <h2 className="text-2xl font-bold">Orientações Energéticas</h2>
+              </div>
+              <p className="text-pink-200 mb-6">
+                Harmonize suas energias e chakras. Receba orientações para transformação pessoal e bem-estar espiritual.
+              </p>
+              <div className="space-y-2 mb-6 text-sm text-pink-300">
+                <p>💫 Análise de chakras</p>
+                <p>💫 Harmonização energética</p>
+                <p>💫 Orientações de transformação</p>
+              </div>
+              <Link href="/energy">
+                <Button className="w-full bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700">
+                  Receber Orientação
                 </Button>
               </Link>
             </div>
