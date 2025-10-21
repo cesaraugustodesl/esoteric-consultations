@@ -20,14 +20,7 @@ export default function Home() {
           </div>
           <div className="flex gap-4">
             {isAuthenticated ? (
-              <>
-                <span className="text-sm text-purple-300">Bem-vindo, {user?.name}</span>
-                <Link href="/dashboard">
-                  <Button variant="outline" className="border-purple-500 text-purple-300 hover:bg-purple-900/30">
-                    Dashboard
-                  </Button>
-                </Link>
-              </>
+              <span className="text-sm text-purple-300">Bem-vindo, {user?.name}</span>
             ) : (
               <a href={getLoginUrl()}>
                 <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
@@ -76,13 +69,11 @@ export default function Home() {
                 <p>💎 3 perguntas - R$ 7,00</p>
                 <p>💎 5 perguntas - R$ 10,00</p>
               </div>
-              {isAuthenticated && (
-                <Link href="/tarot">
-                  <Button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
-                    Consultar Tarot
-                  </Button>
-                </Link>
-              )}
+              <Link href="/tarot">
+                <Button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+                  Consultar Tarot
+                </Button>
+              </Link>
             </div>
           </div>
 
@@ -101,13 +92,11 @@ export default function Home() {
                 <p>✨ Básico - R$ 30,00</p>
                 <p>✨ Premium - R$ 50,00</p>
               </div>
-              {isAuthenticated && (
-                <Link href="/astral">
-                  <Button className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700">
-                    Gerar Mapa
-                  </Button>
-                </Link>
-              )}
+              <Link href="/astral">
+                <Button className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700">
+                  Gerar Mapa
+                </Button>
+              </Link>
             </div>
           </div>
 
@@ -127,13 +116,11 @@ export default function Home() {
                 <p>🔮 3 símbolos - R$ 12,00</p>
                 <p>🔮 5 símbolos - R$ 20,00</p>
               </div>
-              {isAuthenticated && (
-                <Link href="/oracle">
-                  <Button className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700">
-                    Consultar Oráculo
-                  </Button>
-                </Link>
-              )}
+              <Link href="/oracle">
+                <Button className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700">
+                  Consultar Oráculo
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
@@ -155,13 +142,11 @@ export default function Home() {
 
                 <p>💫 Orientações Energéticas</p>
               </div>
-              {isAuthenticated && (
-                <Link href="/dreams">
-                  <Button className="w-full bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700">
-                    Explorar Serviços
-                  </Button>
-                </Link>
-              )}
+              <Link href="/dreams">
+                <Button className="w-full bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700">
+                  Explorar Serviços
+                </Button>
+              </Link>
             </div>
           </div>
         </div>

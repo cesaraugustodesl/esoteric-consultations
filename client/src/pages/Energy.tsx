@@ -8,24 +8,30 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 
 export default function Energy() {
-  const { user } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [topic, setTopic] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [guidance, setGuidance] = useState<string | null>(null);
+  const [chakraFocus, setChakraFocus] = useState<string | null>(null);
 
   const getGuidance = trpc.energy.getGuidance.useMutation();
   const listGuidance = trpc.energy.listGuidance.useQuery();
 
   const handleSubmit = async () => {
     if (!topic.trim()) {
-      alert("Por favor, escolha um tópico");
+      alert("Por favor, descreva o tópico para orientação");
       return;
     }
 
     try {
-      await getGuidance.mutateAsync({ topic });
+      const result = await getGuidance.mutateAsync({ topic });
+      setGuidance(result.guidance);
+      setChakraFocus(result.chakraFocus);
       setSubmitted(true);
       setTopic("");
-      listGuidance.refetch();
+      if (isAuthenticated) {
+        listGuidance.refetch();
+      }
     } catch (error) {
       console.error("Erro ao obter orientação:", error);
       alert("Erro ao obter orientação. Tente novamente.");
@@ -41,20 +47,14 @@ export default function Energy() {
     "Transformação Pessoal",
   ];
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-950 via-indigo-900 to-black flex items-center justify-center">
-        <p className="text-white">Redirecionando...</p>
-      </div>
-    );
-  }
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-950 via-indigo-900 to-black text-white">
       {/* Header */}
       <header className="border-b border-purple-700/30 bg-black/40 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
-          <Link href="/dashboard">
+          <Link href="/">
             <Button variant="ghost" size="sm" className="text-purple-300 hover:bg-purple-900/30">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Voltar
@@ -113,20 +113,16 @@ export default function Energy() {
               </div>
             </Card>
 
-            {/* Latest Guidance */}
-            {submitted && getGuidance.data && (
+            {/* Guidance Result */}
+            {submitted && guidance && (
               <Card className="bg-rose-900/20 border-rose-500/30 p-8">
-                <h3 className="text-xl font-bold mb-4 text-rose-300">Sua Orientação Espiritual</h3>
-                <div className="bg-rose-950/50 rounded-lg p-6 border border-rose-500/20 mb-4">
-                  <p className="text-rose-100 leading-relaxed whitespace-pre-wrap">
-                    {getGuidance.data.guidance}
+                <h3 className="text-xl font-bold mb-2 text-rose-300">Orientação Energética</h3>
+                {chakraFocus && (
+                  <p className="text-sm text-rose-400 mb-4">
+                    💫 Foco: <span className="font-semibold">{chakraFocus}</span>
                   </p>
-                </div>
-                <div className="bg-rose-950/30 rounded-lg p-4 border border-rose-500/20">
-                  <p className="text-sm text-rose-300">
-                    <strong>Chakra em Foco:</strong> {getGuidance.data.chakraFocus}
-                  </p>
-                </div>
+                )}
+                <p className="text-rose-100 leading-relaxed">{guidance}</p>
               </Card>
             )}
           </div>

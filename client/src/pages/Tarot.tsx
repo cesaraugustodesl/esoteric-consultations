@@ -3,26 +3,23 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Sparkles, ArrowLeft, Loader2 } from "lucide-react";
+import { Wand2, ArrowLeft, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { getLoginUrl } from "@/const";
 
 export default function Tarot() {
-  const { user } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [context, setContext] = useState("");
+  const [questions, setQuestions] = useState<string[]>(["", "", "", "", ""]);
   const [numberOfQuestions, setNumberOfQuestions] = useState(1);
-  const [questions, setQuestions] = useState<string[]>([""]);
   const [submitted, setSubmitted] = useState(false);
+  const [response, setResponse] = useState<string | null>(null);
   const [consultationId, setConsultationId] = useState<string | null>(null);
 
   const createConsultation = trpc.tarot.createConsultation.useMutation();
   const generateResponses = trpc.tarot.generateResponses.useMutation();
-  const createPaymentLink = trpc.payments.createPaymentLink.useMutation();
-  const getConsultation = trpc.tarot.getConsultation.useQuery(
-    { id: consultationId || "" },
-    { enabled: !!consultationId && submitted }
-  );
 
   const prices: Record<number, string> = {
     1: "3.00",
@@ -37,19 +34,22 @@ export default function Tarot() {
     setQuestions(newQuestions);
   };
 
-  const handleNumberChange = (num: number) => {
-    setNumberOfQuestions(num);
-    setQuestions(Array(num).fill(""));
-  };
-
   const handleSubmit = async () => {
     if (!context.trim()) {
-      alert("Por favor, descreva o contexto da sua situacao");
+      alert("Por favor, contextualize sua situação");
       return;
     }
-    const filledQuestions = questions.filter((q) => q.trim());
-    if (filledQuestions.length === 0) {
-      alert("Por favor, preencha pelo menos uma pergunta");
+
+    const filledQuestions = questions.slice(0, numberOfQuestions).filter((q) => q.trim());
+    if (filledQuestions.length !== numberOfQuestions) {
+      alert(`Por favor, preencha todas as ${numberOfQuestions} pergunta(s)`);
+      return;
+    }
+
+    // Se não está autenticado, redireciona para login
+    if (!isAuthenticated) {
+      alert("Você será redirecionado para se cadastrar antes de prosseguir com o pagamento.");
+      window.location.href = getLoginUrl();
       return;
     }
 
@@ -57,75 +57,69 @@ export default function Tarot() {
       const result = await createConsultation.mutateAsync({
         context,
         questions: filledQuestions,
-        numberOfQuestions: filledQuestions.length,
+        numberOfQuestions,
       });
 
       setConsultationId(result.consultationId);
-      setSubmitted(true);
 
-      // Generate responses
-      await generateResponses.mutateAsync({
+      // Gera as respostas
+      const responses = await generateResponses.mutateAsync({
         consultationId: result.consultationId,
       });
+
+      setResponse(responses.responses[0]);
+      setSubmitted(true);
     } catch (error) {
-      console.error("Erro ao criar consulta:", error);
-      alert("Erro ao criar consulta. Tente novamente.");
+      console.error("Erro ao consultar Tarot:", error);
+      alert("Erro ao consultar. Tente novamente.");
     }
   };
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-950 via-indigo-900 to-black flex items-center justify-center">
-        <p className="text-white">Redirecionando...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-950 via-indigo-900 to-black text-white">
       {/* Header */}
       <header className="border-b border-purple-700/30 bg-black/40 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
-          <Link href="/dashboard">
+          <Link href="/">
             <Button variant="ghost" size="sm" className="text-purple-300 hover:bg-purple-900/30">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Voltar
             </Button>
           </Link>
           <div className="flex items-center gap-2">
-            <Sparkles className="w-6 h-6 text-purple-400" />
+            <Wand2 className="w-6 h-6 text-purple-400" />
             <h1 className="text-2xl font-bold">Leitura de Tarot</h1>
           </div>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-12">
-        {!submitted ? (
-          <div className="space-y-8">
-            {/* Context Input */}
+        <div className="grid md:grid-cols-3 gap-8">
+          {/* Input Section */}
+          <div className="md:col-span-2 space-y-6">
+            {/* Context */}
             <Card className="bg-purple-900/20 border-purple-500/30 p-8">
-              <h2 className="text-2xl font-bold mb-6">Contextualize sua Situacao</h2>
-              <p className="text-purple-200 mb-4">
-                Descreva brevemente a situacao ou area da vida sobre a qual deseja receber orientacao. 
-                Isso ajudara as cartas a fornecerem respostas mais profundas e personalizadas.
-              </p>
+              <h2 className="text-2xl font-bold mb-6">Contextualize sua Situação</h2>
               <Textarea
                 value={context}
                 onChange={(e) => setContext(e.target.value)}
-                placeholder="Ex: Estou em duvida sobre minha carreira e gostaria de entender melhor o caminho que devo seguir..."
+                placeholder="Descreva brevemente a situação ou área da vida sobre a qual deseja orientação..."
                 className="bg-purple-950/50 border-purple-500/30 text-white placeholder-purple-400/50 focus:border-purple-400"
                 rows={4}
               />
+              <p className="text-sm text-purple-300 mt-3">
+                Quanto mais detalhes você fornecer, mais profunda será a leitura.
+              </p>
             </Card>
 
-            {/* Question Selection */}
+            {/* Number of Questions */}
             <Card className="bg-purple-900/20 border-purple-500/30 p-8">
-              <h2 className="text-2xl font-bold mb-6">Quantas perguntas deseja fazer?</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <h2 className="text-2xl font-bold mb-6">Quantas Perguntas?</h2>
+              <div className="grid grid-cols-4 gap-3">
                 {[1, 2, 3, 5].map((num) => (
                   <button
                     key={num}
-                    onClick={() => handleNumberChange(num)}
+                    onClick={() => setNumberOfQuestions(num)}
                     className={`p-4 rounded-lg border-2 transition-all ${
                       numberOfQuestions === num
                         ? "border-purple-400 bg-purple-600/30"
@@ -139,136 +133,96 @@ export default function Tarot() {
               </div>
             </Card>
 
-            {/* Questions Input */}
+            {/* Questions */}
             <Card className="bg-purple-900/20 border-purple-500/30 p-8">
               <h2 className="text-2xl font-bold mb-6">Suas Perguntas</h2>
               <div className="space-y-4">
-                {questions.map((question, index) => (
+                {Array.from({ length: numberOfQuestions }).map((_, index) => (
                   <div key={index}>
                     <label className="block text-sm text-purple-300 mb-2">
                       Pergunta {index + 1}
                     </label>
                     <Textarea
-                      value={question}
+                      value={questions[index]}
                       onChange={(e) => handleQuestionChange(index, e.target.value)}
-                      placeholder="Formule sua pergunta com clareza e intenção..."
+                      placeholder={`Formule sua pergunta com clareza e intenção...`}
                       className="bg-purple-950/50 border-purple-500/30 text-white placeholder-purple-400/50 focus:border-purple-400"
-                      rows={3}
+                      rows={2}
                     />
                   </div>
                 ))}
               </div>
             </Card>
 
-            {/* Price Summary */}
-            <Card className="bg-pink-900/20 border-pink-500/30 p-6">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-purple-300">Total a pagar:</p>
-                  <p className="text-3xl font-bold text-pink-400">R$ {prices[numberOfQuestions]}</p>
-                </div>
-                <Button
-                  onClick={handleSubmit}
-                  disabled={createConsultation.isPending}
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-lg px-8"
-                >
-                  {createConsultation.isPending ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Processando...
-                    </>
-                  ) : (
-                    "Prosseguir para Pagamento"
-                  )}
-                </Button>
-              </div>
-            </Card>
+            {/* Submit Button */}
+            <Button
+              onClick={handleSubmit}
+              disabled={createConsultation.isPending || generateResponses.isPending}
+              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-lg py-6"
+            >
+              {createConsultation.isPending || generateResponses.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Consultando...
+                </>
+              ) : (
+                `Consultar Tarot - R$ ${prices[numberOfQuestions]}`
+              )}
+            </Button>
 
-            {/* Info */}
-            <div className="bg-indigo-900/20 border border-indigo-500/30 rounded-lg p-6">
-              <p className="text-indigo-200">
-                ✨ Suas perguntas serão respondidas com sabedoria ancestral e profundidade espiritual. 
-                Cada resposta é uma mensagem do plano espiritual para sua jornada.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-8">
-            {/* Loading State */}
-            {generateResponses.isPending && (
-              <Card className="bg-purple-900/20 border-purple-500/30 p-12 text-center">
-                <Loader2 className="w-12 h-12 animate-spin text-purple-400 mx-auto mb-4" />
-                <p className="text-xl text-purple-200">
-                  Conectando com o plano espiritual...
-                </p>
-                <p className="text-sm text-purple-400 mt-2">
-                  Suas respostas estão sendo canalizadas
-                </p>
+            {/* Response */}
+            {submitted && response && (
+              <Card className="bg-purple-900/30 border-purple-400/50 p-8">
+                <h3 className="text-xl font-bold mb-4 text-purple-300">Mensagem do Plano Espiritual</h3>
+                <p className="text-purple-100 leading-relaxed">{response}</p>
+                {isAuthenticated && consultationId && (
+                  <Button className="w-full mt-6 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+                    Proceder com Pagamento
+                  </Button>
+                )}
               </Card>
             )}
-
-            {/* Consultation Results */}
-            {getConsultation.data && !generateResponses.isPending && (
-              <div className="space-y-8">
-                <Card className="bg-purple-900/20 border-purple-500/30 p-8">
-                  <h2 className="text-2xl font-bold mb-6">Suas Respostas Espirituais</h2>
-                  <div className="space-y-8">
-                    {getConsultation.data?.questions.map((question: string, index: number) => (
-                      <div key={index} className="border-b border-purple-500/20 pb-6 last:border-0">
-                        <h3 className="text-lg font-semibold text-purple-300 mb-3">
-                          ❓ {question}
-                        </h3>
-                        <div className="bg-purple-950/50 rounded-lg p-6 border border-purple-500/20">
-                          <p className="text-purple-100 leading-relaxed whitespace-pre-wrap">
-                            {getConsultation.data?.responses[index]}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-
-                {/* Payment Info */}
-                <Card className="bg-pink-900/20 border-pink-500/30 p-6">
-                  <p className="text-pink-200 mb-4">
-                    ✨ Suas respostas foram canalizadas do plano espiritual. 
-                    Complete o pagamento para confirmar sua consulta.
-                  </p>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-pink-300">Valor da consulta:</p>
-                      <p className="text-2xl font-bold text-pink-400">
-                        R$ {getConsultation.data?.price}
-                      </p>
-                    </div>
-                    <Button
-                      onClick={async () => {
-                        if (!getConsultation.data) return;
-                        try {
-                          const result = await createPaymentLink.mutateAsync({
-                            consultationId: getConsultation.data.id,
-                            amount: getConsultation.data.price,
-                            numberOfQuestions: getConsultation.data.numberOfQuestions,
-                          });
-                          if (result.paymentLink) {
-                            window.location.href = result.paymentLink;
-                          }
-                        } catch (error) {
-                          console.error("Erro ao redirecionar para pagamento:", error);
-                          alert("Erro ao processar pagamento. Tente novamente.");
-                        }
-                      }}
-                      disabled={createPaymentLink.isPending}
-                      className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-                    >
-                      {createPaymentLink.isPending ? "Processando..." : "Pagar Agora"}
-                    </Button>
-                  </div>
-                </Card>
-              </div>
-            )}
           </div>
-        )}
+
+          {/* Info Sidebar */}
+          <div>
+            <Card className="bg-purple-900/20 border-purple-500/30 p-6 sticky top-24">
+              <h3 className="text-lg font-bold mb-4">Como Funciona</h3>
+              <div className="space-y-4 text-sm text-purple-200">
+                <div>
+                  <p className="font-bold text-purple-300 mb-1">1. Contexto</p>
+                  <p>Descreva a situação ou área de interesse</p>
+                </div>
+                <div>
+                  <p className="font-bold text-purple-300 mb-1">2. Perguntas</p>
+                  <p>Formule suas perguntas com clareza</p>
+                </div>
+                <div>
+                  <p className="font-bold text-purple-300 mb-1">3. Leitura</p>
+                  <p>Receba respostas profundas do plano espiritual</p>
+                </div>
+                <div className="pt-4 border-t border-purple-500/30">
+                  <p className="font-bold text-purple-300 mb-2">Tabela de Preços</p>
+                  <div className="space-y-1 text-purple-300">
+                    <p>💎 1 pergunta: R$ 3,00</p>
+                    <p>💎 2 perguntas: R$ 5,00</p>
+                    <p>💎 3 perguntas: R$ 7,00</p>
+                    <p>💎 5 perguntas: R$ 10,00</p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+
+        {/* Info */}
+        <div className="mt-8 bg-purple-900/20 border border-purple-500/30 rounded-lg p-6">
+          <p className="text-purple-200">
+            🔮 Cada leitura de Tarot é uma jornada de autoconhecimento. As respostas vêm do plano espiritual,
+            trazendo orientação profunda e intuitiva para suas questões mais importantes. Você pode explorar
+            livremente. O cadastro e pagamento são necessários apenas quando deseja confirmar uma consulta.
+          </p>
+        </div>
       </main>
     </div>
   );
