@@ -144,7 +144,7 @@ Suas respostas devem:
    * Dream Interpretations (Free)
    */
   dreams: router({
-    interpretDream: protectedProcedure
+    interpretDream: publicProcedure
       .input(z.object({ dreamDescription: z.string().min(20) }))
       .mutation(async ({ ctx, input }) => {
         const response = await invokeLLM({
@@ -178,7 +178,7 @@ Sua interpretação deve:
         const symbols = symbolMatches.map((s) => s.replace(/símbolo[^:]*:\s*/i, ""));
 
         const dreamId = await createDreamInterpretation(
-          ctx.user.id,
+          ctx.user?.id || "anonymous",
           input.dreamDescription,
           interpretation,
           symbols
@@ -187,8 +187,11 @@ Sua interpretação deve:
         return { dreamId, interpretation, symbols };
       }),
 
-    listInterpretations: protectedProcedure.query(async ({ ctx }) => {
-      return await getUserDreamInterpretations(ctx.user.id);
+    listInterpretations: publicProcedure.query(async ({ ctx }) => {
+      if (ctx.user) {
+        return await getUserDreamInterpretations(ctx.user.id);
+      }
+      return [];
     }),
   }),
 
@@ -287,7 +290,7 @@ Sua interpretação deve:
    * Energy Guidance (Free)
    */
   energy: router({
-    getGuidance: protectedProcedure
+    getGuidance: publicProcedure
       .input(z.object({ topic: z.string().min(5) }))
       .mutation(async ({ ctx, input }) => {
         const response = await invokeLLM({
@@ -320,7 +323,7 @@ Sua orientação deve:
         const chakraFocus = chakraMatch ? chakraMatch[1].trim() : "Chakra do Coração";
 
         const guidanceId = await createEnergyGuidance(
-          ctx.user.id,
+          ctx.user?.id || "anonymous",
           input.topic,
           guidance,
           chakraFocus
@@ -329,8 +332,11 @@ Sua orientação deve:
         return { guidanceId, guidance, chakraFocus };
       }),
 
-    listGuidance: protectedProcedure.query(async ({ ctx }) => {
-      return await getUserEnergyGuidance(ctx.user.id);
+    listGuidance: publicProcedure.query(async ({ ctx }) => {
+      if (ctx.user) {
+        return await getUserEnergyGuidance(ctx.user.id);
+      }
+      return [];
     }),
   }),
 
