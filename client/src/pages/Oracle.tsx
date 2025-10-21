@@ -44,27 +44,21 @@ export default function Oracle() {
       });
       setSubmitted(true);
       setQuestion("");
-      listConsults.refetch();
+      // listConsults.refetch();
     } catch (error) {
       console.error("Erro ao consultar oráculo:", error);
       alert("Erro ao consultar. Tente novamente.");
     }
   };
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-950 via-indigo-900 to-black flex items-center justify-center">
-        <p className="text-white">Redirecionando...</p>
-      </div>
-    );
-  }
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-950 via-indigo-900 to-black text-white">
       {/* Header */}
       <header className="border-b border-purple-700/30 bg-black/40 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
-          <Link href="/dashboard">
+          <Link href="/">
             <Button variant="ghost" size="sm" className="text-purple-300 hover:bg-purple-900/30">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Voltar

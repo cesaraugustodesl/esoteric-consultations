@@ -42,7 +42,7 @@ export const appRouter = router({
    * Tarot Consultations (Paid)
    */
   tarot: router({
-    createConsultation: protectedProcedure
+    createConsultation: publicProcedure
       .input(
         z.object({
           context: z.string().min(10),
@@ -61,7 +61,7 @@ export const appRouter = router({
         const price = prices[input.numberOfQuestions] || "0.00";
 
         const consultationId = await createTarotConsultation(
-          ctx.user.id,
+          ctx.user?.id || "anonymous",
           input.context,
           input.questions,
           input.numberOfQuestions,
@@ -71,11 +71,11 @@ export const appRouter = router({
         return { consultationId, price };
       }),
 
-    getConsultation: protectedProcedure
+    getConsultation: publicProcedure
       .input(z.object({ id: z.string() }))
       .query(async ({ ctx, input }) => {
         const consultation = await getTarotConsultation(input.id);
-        if (!consultation || consultation.userId !== ctx.user.id) {
+        if (!consultation || (ctx.user && consultation.userId !== ctx.user.id)) {
           return null;
         }
         return {
@@ -85,11 +85,11 @@ export const appRouter = router({
         };
       }),
 
-    generateResponses: protectedProcedure
+    generateResponses: publicProcedure
       .input(z.object({ consultationId: z.string() }))
       .mutation(async ({ ctx, input }) => {
         const consultation = await getTarotConsultation(input.consultationId);
-        if (!consultation || consultation.userId !== ctx.user.id) {
+        if (!consultation || (ctx.user && consultation.userId !== ctx.user.id)) {
           throw new Error("Consultation not found");
         }
 
@@ -135,8 +135,11 @@ Suas respostas devem:
         return { responses };
       }),
 
-    listConsultations: protectedProcedure.query(async ({ ctx }) => {
-      return await getUserTarotConsultations(ctx.user.id);
+    listConsultations: publicProcedure.query(async ({ ctx }) => {
+      if (ctx.user) {
+        return await getUserTarotConsultations(ctx.user.id);
+      }
+      return [];
     }),
   }),
 
@@ -199,7 +202,7 @@ Sua interpretação deve:
    * Astral Maps (Paid)
    */
   astral: router({
-    createMap: protectedProcedure
+    createMap: publicProcedure
       .input(
         z.object({
           birthDate: z.string(),
@@ -217,7 +220,7 @@ Sua interpretação deve:
         const price = prices[input.packageType];
 
         const mapId = await createAstralMap(
-          ctx.user.id,
+          ctx.user?.id || "anonymous",
           input.birthDate,
           input.birthTime,
           input.birthLocation,
@@ -230,14 +233,17 @@ Sua interpretação deve:
         return { mapId, price };
       }),
 
-    generateMap: protectedProcedure
+    generateMap: publicProcedure
       .input(z.object({ mapId: z.string() }))
       .mutation(async ({ ctx, input }) => {
         return { success: true };
       }),
 
-    listMaps: protectedProcedure.query(async ({ ctx }) => {
-      return await getUserAstralMaps(ctx.user.id);
+    listMaps: publicProcedure.query(async ({ ctx }) => {
+      if (ctx.user) {
+        return await getUserAstralMaps(ctx.user.id);
+      }
+      return [];
     }),
   }),
 
@@ -245,7 +251,7 @@ Sua interpretação deve:
    * Oracles (Paid)
    */
   oracle: router({
-    createConsult: protectedProcedure
+    createConsult: publicProcedure
       .input(
         z.object({
           oracleType: z.enum(["runas", "anjos", "buzios"]),
@@ -263,7 +269,7 @@ Sua interpretação deve:
         const price = prices[input.numberOfSymbols] || "0.00";
 
         const oracleId = await createOracle(
-          ctx.user.id,
+          ctx.user?.id || "anonymous",
           input.oracleType,
           input.question,
           input.numberOfSymbols,
@@ -275,14 +281,17 @@ Sua interpretação deve:
         return { oracleId, price };
       }),
 
-    generateInterpretation: protectedProcedure
+    generateInterpretation: publicProcedure
       .input(z.object({ oracleId: z.string() }))
       .mutation(async ({ ctx, input }) => {
         return { success: true };
       }),
 
-    listConsults: protectedProcedure.query(async ({ ctx }) => {
-      return await getUserOracles(ctx.user.id);
+    listConsults: publicProcedure.query(async ({ ctx }) => {
+      if (ctx.user) {
+        return await getUserOracles(ctx.user.id);
+      }
+      return [];
     }),
   }),
 

@@ -46,12 +46,7 @@ export default function Tarot() {
       return;
     }
 
-    // Se não está autenticado, redireciona para login
-    if (!isAuthenticated) {
-      alert("Você será redirecionado para se cadastrar antes de prosseguir com o pagamento.");
-      window.location.href = getLoginUrl();
-      return;
-    }
+    // Teste: remover requisito de autenticação
 
     try {
       const result = await createConsultation.mutateAsync({
@@ -175,11 +170,7 @@ export default function Tarot() {
               <Card className="bg-purple-900/30 border-purple-400/50 p-8">
                 <h3 className="text-xl font-bold mb-4 text-purple-300">Mensagem do Plano Espiritual</h3>
                 <p className="text-purple-100 leading-relaxed">{response}</p>
-                {isAuthenticated && consultationId && (
-                  <Button className="w-full mt-6 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
-                    Proceder com Pagamento
-                  </Button>
-                )}
+
               </Card>
             )}
           </div>
