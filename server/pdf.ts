@@ -1,4 +1,4 @@
-import { PDFDocument, PDFPage, rgb } from 'pdf-lib';
+import { PDFDocument, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 
 export async function generateAstralMapPDF(
@@ -30,7 +30,7 @@ export async function generateAstralMapPDF(
   });
 
   // Título
-  page.drawText('✨ MAPA ASTRAL PERSONALIZADO ✨', {
+  page.drawText('MAPA ASTRAL PERSONALIZADO', {
     x: 50,
     y: height - 100,
     size: 28,
@@ -72,7 +72,7 @@ export async function generateAstralMapPDF(
     color: rgb(0.9, 0.9, 0.9),
   });
 
-  page.drawText(`Pacote: ${packageType === 'basic' ? 'Básico' : 'Premium'}`, {
+  page.drawText(`Pacote: ${packageType === 'basic' ? 'Basico' : 'Premium'}`, {
     x: 50,
     y: height - 240,
     size: 12,
@@ -80,7 +80,7 @@ export async function generateAstralMapPDF(
     color: rgb(1, 0.8, 0.2),
   });
 
-  page.drawText(`Data de Geração: ${new Date().toLocaleDateString('pt-BR')}`, {
+  page.drawText(`Data de Geracao: ${new Date().toLocaleDateString('pt-BR')}`, {
     x: 50,
     y: height - 260,
     size: 10,
@@ -100,7 +100,7 @@ export async function generateAstralMapPDF(
       currentY = height - 50;
       
       // Número da página
-      page.drawText(`Página ${pageNumber}`, {
+      page.drawText(`Pagina ${pageNumber}`, {
         x: width - 100,
         y: 30,
         size: 10,
@@ -130,7 +130,7 @@ export async function generateAstralMapPDF(
         if (currentY < 50) {
           page = pdfDoc.addPage([595, 842]);
           currentY = height - 50;
-          page.drawText(`Página ${pageNumber}`, {
+          page.drawText(`Pagina ${pageNumber}`, {
             x: width - 100,
             y: 30,
             size: 10,
@@ -162,7 +162,7 @@ export async function generateAstralMapPDF(
     color: rgb(0.3, 0.1, 0.4),
   });
 
-  page.drawText('Consultas Esotéricas © 2025', {
+  page.drawText('Consultas Esotéricas 2025', {
     x: 50,
     y: height - 100,
     size: 16,
@@ -198,3 +198,4 @@ export async function generateAstralMapPDF(
   const pdfBytes = await pdfDoc.save();
   return Buffer.from(pdfBytes);
 }
+
