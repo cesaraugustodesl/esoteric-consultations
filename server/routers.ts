@@ -16,6 +16,8 @@ import {
   getUserOracles,
   createEnergyGuidance,
   getUserEnergyGuidance,
+  createNumerology,
+  getUserNumerologies,
   createPayment,
   updatePayment,
   getPayment,
@@ -24,6 +26,7 @@ import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
 import { createPaymentPreference } from "./payment";
 import { generateAstralMapPDF } from "./pdf";
+import { numerologyRouter } from "./numerologyRouter";
 
 export const appRouter = router({
   system: systemRouter,
@@ -413,6 +416,8 @@ Sua resposta deve:
   /**
    * Energy Guidance (Free)
    */
+  numerology: numerologyRouter,
+
   energy: router({
     getGuidance: publicProcedure
       .input(z.object({ topic: z.string().min(5) }))

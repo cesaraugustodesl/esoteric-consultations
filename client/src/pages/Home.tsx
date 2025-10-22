@@ -122,6 +122,33 @@ export default function Home() {
               </Link>
             </div>
           </div>
+
+          {/* Numerology Paid */}
+          <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-yellow-900/40 to-amber-900/40 border border-yellow-500/30 p-8 hover:border-yellow-400/60 transition-all">
+            <div className="absolute inset-0 bg-gradient-to-br from-yellow-600/0 to-amber-600/0 group-hover:from-yellow-600/10 group-hover:to-amber-600/10 transition-all" />
+            <div className="relative z-10">
+              <div className="flex items-center gap-3 mb-4">
+                <Sparkles className="w-8 h-8 text-yellow-400" />
+                <h2 className="text-2xl font-bold">Numerologia</h2>
+              </div>
+              <p className="text-yellow-200 mb-6">
+                Descubra os números que definem seu destino, alma e personalidade. Leitura completa com 5 números principais.
+              </p>
+              <div className="space-y-2 mb-6 text-sm text-yellow-300">
+                <p>🔢 Número de Destino</p>
+                <p>🔢 Número da Alma</p>
+                <p>🔢 Número da Personalidade</p>
+                <p>🔢 Número de Expressão</p>
+                <p>🔢 Ano Pessoal</p>
+              </div>
+              <div className="text-lg font-bold text-yellow-400 mb-4">R$ 25,00</div>
+              <Link href="/numerology">
+                <Button className="w-full bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-700 hover:to-amber-700">
+                  Gerar Leitura
+                </Button>
+              </Link>
+            </div>
+          </div>
         </div>
 
         {/* Free Services */}

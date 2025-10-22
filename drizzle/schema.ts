@@ -82,6 +82,29 @@ export const oracles = mysqlTable("oracles", {
 });
 
 /**
+ * Numerologia (paga)
+ */
+export const numerologies = mysqlTable("numerologies", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  userId: varchar("userId", { length: 64 }).notNull(),
+  fullName: varchar("fullName", { length: 255 }).notNull(),
+  birthDate: varchar("birthDate", { length: 10 }).notNull(), // YYYY-MM-DD
+  destinyNumber: int("destinyNumber").notNull(),
+  soulNumber: int("soulNumber").notNull(),
+  personalityNumber: int("personalityNumber").notNull(),
+  expressionNumber: int("expressionNumber").notNull(),
+  personalYear: int("personalYear").notNull(),
+  destinyInterpretation: text("destinyInterpretation").notNull(),
+  soulInterpretation: text("soulInterpretation").notNull(),
+  personalityInterpretation: text("personalityInterpretation").notNull(),
+  expressionInterpretation: text("expressionInterpretation").notNull(),
+  yearInterpretation: text("yearInterpretation").notNull(),
+  price: varchar("price", { length: 10 }).notNull(),
+  paymentStatus: mysqlEnum("paymentStatus", ["pending", "completed", "failed"]).default("pending"),
+  createdAt: timestamp("createdAt").defaultNow(),
+});
+
+/**
  * Orientações Energéticas (gratuitas)
  */
 export const energyGuidance = mysqlTable("energy_guidance", {
@@ -122,6 +145,9 @@ export type InsertOracle = typeof oracles.$inferInsert;
 
 export type EnergyGuidance = typeof energyGuidance.$inferSelect;
 export type InsertEnergyGuidance = typeof energyGuidance.$inferInsert;
+
+export type Numerology = typeof numerologies.$inferSelect;
+export type InsertNumerology = typeof numerologies.$inferInsert;
 
 export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = typeof payments.$inferInsert;

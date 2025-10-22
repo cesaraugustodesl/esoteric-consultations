@@ -29,6 +29,13 @@
       "when": 1761081222126,
       "tag": "0003_deep_centennial",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1761152340885,
+      "tag": "0004_light_lightspeed",
+      "breakpoints": true
     }
   ]
 }

@@ -10,6 +10,7 @@ import Tarot from "./pages/Tarot";
 import Dreams from "./pages/Dreams";
 import Astral from "./pages/Astral";
 import Oracle from "./pages/Oracle";
+import Numerology from "./pages/Numerology";
 import Energy from "./pages/Energy";
 
 function Router() {
@@ -22,6 +23,7 @@ function Router() {
       <Route path="/dreams" component={Dreams} />
       <Route path="/astral" component={Astral} />
       <Route path="/oracle" component={Oracle} />
+      <Route path="/numerology" component={Numerology} />
       <Route path="/energy" component={Energy} />
       <Route path="/404" component={NotFound} />
       {/* Final fallback route */}

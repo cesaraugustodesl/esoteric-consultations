@@ -1,0 +1,20 @@
+CREATE TABLE `numerologies` (
+	`id` varchar(64) NOT NULL,
+	`userId` varchar(64) NOT NULL,
+	`fullName` varchar(255) NOT NULL,
+	`birthDate` varchar(10) NOT NULL,
+	`destinyNumber` int NOT NULL,
+	`soulNumber` int NOT NULL,
+	`personalityNumber` int NOT NULL,
+	`expressionNumber` int NOT NULL,
+	`personalYear` int NOT NULL,
+	`destinyInterpretation` text NOT NULL,
+	`soulInterpretation` text NOT NULL,
+	`personalityInterpretation` text NOT NULL,
+	`expressionInterpretation` text NOT NULL,
+	`yearInterpretation` text NOT NULL,
+	`price` varchar(10) NOT NULL,
+	`paymentStatus` enum('pending','completed','failed') DEFAULT 'pending',
+	`createdAt` timestamp DEFAULT (now()),
+	CONSTRAINT `numerologies_id` PRIMARY KEY(`id`)
+);

@@ -8,6 +8,7 @@ import {
   astralMaps,
   oracles,
   energyGuidance,
+  numerologies,
   payments,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -383,3 +384,61 @@ export async function getPayment(id: string) {
 
   return result.length > 0 ? result[0] : null;
 }
+
+
+/**
+ * Numerology
+ */
+export async function createNumerology(
+  userId: string,
+  fullName: string,
+  birthDate: string,
+  destinyNumber: number,
+  soulNumber: number,
+  personalityNumber: number,
+  expressionNumber: number,
+  personalYear: number,
+  destinyInterpretation: string,
+  soulInterpretation: string,
+  personalityInterpretation: string,
+  expressionInterpretation: string,
+  yearInterpretation: string,
+  price: string
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const id = crypto.randomUUID();
+  await db.insert(numerologies).values({
+    id,
+    userId,
+    fullName,
+    birthDate,
+    destinyNumber,
+    soulNumber,
+    personalityNumber,
+    expressionNumber,
+    personalYear,
+    destinyInterpretation,
+    soulInterpretation,
+    personalityInterpretation,
+    expressionInterpretation,
+    yearInterpretation,
+    price,
+    paymentStatus: "pending",
+  });
+
+  return id;
+}
+
+export async function getUserNumerologies(userId: string) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db
+    .select()
+    .from(numerologies)
+    .where(eq(numerologies.userId, userId))
+    .orderBy(desc(numerologies.createdAt));
+}
+
