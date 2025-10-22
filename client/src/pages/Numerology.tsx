@@ -14,8 +14,12 @@ export default function Numerology() {
   const [submitted, setSubmitted] = useState(false);
   const [result, setResult] = useState<any>(null);
 
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [readingId, setReadingId] = useState<string | null>(null);
+
   const createReading = trpc.numerology.createReading.useMutation();
   const listReadings = trpc.numerology.listReadings.useQuery();
+  const createPaymentPreference = trpc.payment.createPreference.useMutation();
 
   const handleSubmit = async () => {
     if (!fullName.trim()) {
@@ -45,6 +49,7 @@ export default function Numerology() {
         fullName,
         birthDate: formattedDate,
       });
+      setReadingId(response.numerologyId);
       setResult(response);
       setSubmitted(true);
       listReadings.refetch();
@@ -172,6 +177,49 @@ export default function Numerology() {
                 <p className="text-indigo-400 font-semibold text-sm mb-2">Valor da Consulta</p>
                 <p className="text-2xl font-bold text-indigo-300">R$ {typeof result.price === 'number' ? result.price.toFixed(2) : '25.00'}</p>
               </div>
+            </Card>
+
+            {/* Payment Section */}
+            <Card className="bg-gradient-to-br from-yellow-900/40 to-orange-900/40 border-yellow-400/50 p-6">
+              <h3 className="text-lg font-bold mb-3 text-yellow-300">💳 Confirmar Consulta</h3>
+              <p className="text-yellow-100 mb-4 text-sm">
+                Para confirmar esta leitura numerológica e apoiar nosso trabalho espiritual:
+              </p>
+              <div className="text-2xl font-bold text-yellow-300 mb-4">R$ {typeof result.price === 'number' ? result.price.toFixed(2) : '25.00'}</div>
+              <Button
+                onClick={async () => {
+                  if (!readingId) return;
+                  setIsProcessingPayment(true);
+                  try {
+                    const paymentResult = await createPaymentPreference.mutateAsync({
+                      consultationType: "numerology",
+                      amount: typeof result.price === 'number' ? result.price : 25.00,
+                      description: "Leitura Numerológica Completa",
+                      consultationId: readingId,
+                    });
+                    if (paymentResult.initPoint) {
+                      localStorage.setItem("pendingPaymentId", paymentResult.paymentId);
+                      window.location.href = paymentResult.initPoint;
+                    }
+                  } catch (error) {
+                    console.error("Erro ao processar pagamento:", error);
+                    alert("Erro ao processar pagamento. Tente novamente.");
+                  } finally {
+                    setIsProcessingPayment(false);
+                  }
+                }}
+                disabled={isProcessingPayment}
+                className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold py-2 px-4 rounded-lg"
+              >
+                {isProcessingPayment ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processando...
+                  </>
+                ) : (
+                  "Pagar com Mercado Pago"
+                )}
+              </Button>
             </Card>
 
             {/* Action Button */}

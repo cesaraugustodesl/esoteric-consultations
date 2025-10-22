@@ -17,8 +17,12 @@ export default function Oracle() {
   const [expandedInfo, setExpandedInfo] = useState<string | null>(null);
   const [result, setResult] = useState<any>(null);
 
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [consultationId, setConsultationId] = useState<string | null>(null);
+
   const createConsult = trpc.oracle.createConsult.useMutation();
   const listConsults = trpc.oracle.listConsults.useQuery();
+  const createPaymentPreference = trpc.payment.createPreference.useMutation();
 
   const prices: Record<number, string> = {
     1: "5.00",
@@ -77,12 +81,13 @@ export default function Oracle() {
     }
 
     try {
-      const response = await createConsult.mutateAsync({
+      const result = await createConsult.mutateAsync({
         oracleType,
         question,
         numberOfSymbols,
       });
-      setResult(response);
+      setConsultationId(result.oracleId);
+      setResult(result);
       setSubmitted(true);
       listConsults.refetch();
     } catch (error) {
@@ -143,6 +148,49 @@ export default function Oracle() {
                   <p className="text-2xl font-bold text-cyan-300 mt-2">R$ {result.price}</p>
                 </div>
               </div>
+
+              {/* Payment Section */}
+              <Card className="bg-gradient-to-br from-cyan-900/40 to-blue-900/40 border-cyan-400/50 p-6 mb-6">
+                <h3 className="text-lg font-bold mb-3 text-cyan-300">💳 Confirmar Consulta</h3>
+                <p className="text-cyan-100 mb-4 text-sm">
+                  Para confirmar esta consulta e apoiar nosso trabalho espiritual:
+                </p>
+                <div className="text-2xl font-bold text-cyan-300 mb-4">R$ {result.price}</div>
+                <Button
+                  onClick={async () => {
+                    if (!consultationId) return;
+                    setIsProcessingPayment(true);
+                    try {
+                      const paymentResult = await createPaymentPreference.mutateAsync({
+                        consultationType: "oracle",
+                        amount: parseFloat(result.price),
+                        description: `Consulta ${oracleNames[oracleType!]} - ${numberOfSymbols} símbolo(s)`,
+                        consultationId,
+                      });
+                      if (paymentResult.initPoint) {
+                        localStorage.setItem("pendingPaymentId", paymentResult.paymentId);
+                        window.location.href = paymentResult.initPoint;
+                      }
+                    } catch (error) {
+                      console.error("Erro ao processar pagamento:", error);
+                      alert("Erro ao processar pagamento. Tente novamente.");
+                    } finally {
+                      setIsProcessingPayment(false);
+                    }
+                  }}
+                  disabled={isProcessingPayment}
+                  className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-bold py-2 px-4 rounded-lg"
+                >
+                  {isProcessingPayment ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Processando...
+                    </>
+                  ) : (
+                    "Pagar com Mercado Pago"
+                  )}
+                </Button>
+              </Card>
 
               <Button
                 onClick={handleNewConsult}

@@ -48,10 +48,12 @@ export default function Astral() {
   const [mapContent, setMapContent] = useState<string | null>(null);
   const [mapId, setMapId] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const createMap = trpc.astral.createMap.useMutation();
   const generatePDF = trpc.astral.generatePDF.useMutation();
   const listMaps = trpc.astral.listMaps.useQuery();
+  const createPaymentPreference = trpc.payment.createPreference.useMutation();
 
   const price = "40.00";
 
@@ -284,6 +286,49 @@ export default function Astral() {
                       <p className="text-yellow-100 leading-relaxed whitespace-pre-wrap text-sm">{mapContent}</p>
                     </div>
                   )}
+                  {/* Payment Section */}
+                  <Card className="bg-gradient-to-br from-yellow-900/40 to-orange-900/40 border-yellow-400/50 p-6 mb-6">
+                    <h3 className="text-lg font-bold mb-3 text-yellow-300">💳 Confirmar Consulta</h3>
+                    <p className="text-yellow-100 mb-4 text-sm">
+                      Para confirmar este mapa astral e apoiar nosso trabalho espiritual:
+                    </p>
+                    <div className="text-2xl font-bold text-yellow-300 mb-4">R$ {price}</div>
+                    <Button
+                      onClick={async () => {
+                        if (!mapId) return;
+                        setIsProcessingPayment(true);
+                        try {
+                          const result = await createPaymentPreference.mutateAsync({
+                            consultationType: "astral",
+                            amount: parseFloat(price),
+                            description: "Mapa Astral + Previsões",
+                            consultationId: mapId,
+                          });
+                          if (result.initPoint) {
+                            localStorage.setItem("pendingPaymentId", result.paymentId);
+                            window.location.href = result.initPoint;
+                          }
+                        } catch (error) {
+                          console.error("Erro ao processar pagamento:", error);
+                          alert("Erro ao processar pagamento. Tente novamente.");
+                        } finally {
+                          setIsProcessingPayment(false);
+                        }
+                      }}
+                      disabled={isProcessingPayment}
+                      className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold py-2 px-4 rounded-lg"
+                    >
+                      {isProcessingPayment ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Processando...
+                        </>
+                      ) : (
+                        "Pagar com Mercado Pago"
+                      )}
+                    </Button>
+                  </Card>
+
                   <div className="space-y-3">
                     <Button
                       onClick={downloadPDF}
