@@ -44,7 +44,6 @@ export default function Astral() {
   const [birthLocation, setBirthLocation] = useState("");
   const [filteredCities, setFilteredCities] = useState<typeof BRAZILIAN_CITIES>([]);
   const [showCities, setShowCities] = useState(false);
-  const [packageType, setPackageType] = useState<"basic" | "premium">("basic");
   const [submitted, setSubmitted] = useState(false);
   const [mapContent, setMapContent] = useState<string | null>(null);
   const [mapId, setMapId] = useState<string | null>(null);
@@ -54,10 +53,7 @@ export default function Astral() {
   const generatePDF = trpc.astral.generatePDF.useMutation();
   const listMaps = trpc.astral.listMaps.useQuery();
 
-  const prices: Record<string, string> = {
-    basic: "30.00",
-    premium: "50.00",
-  };
+  const price = "40.00";
 
   const handleLocationChange = (value: string) => {
     setBirthLocation(value);
@@ -88,7 +84,7 @@ export default function Astral() {
         birthDate,
         birthTime,
         birthLocation,
-        packageType,
+        packageType: "premium",
         mapContent,
       });
 
@@ -134,7 +130,7 @@ export default function Astral() {
         birthDate,
         birthTime,
         birthLocation,
-        packageType,
+        packageType: "premium",
       });
       setMapContent(result.mapContent);
       setMapId(result.mapId);
@@ -158,7 +154,7 @@ export default function Astral() {
           </Link>
           <div className="flex items-center gap-2">
             <Star className="w-6 h-6 text-yellow-400" />
-            <h1 className="text-2xl font-bold">Mapa Astral Personalizado</h1>
+            <h1 className="text-2xl font-bold">Mapa Astral + Previsões</h1>
           </div>
         </div>
       </header>
@@ -239,36 +235,21 @@ export default function Astral() {
                   </div>
                 </Card>
 
-                {/* Package Selection */}
+                {/* Info Card */}
                 <Card className="bg-yellow-900/20 border-yellow-500/30 p-8">
-                  <h2 className="text-2xl font-bold mb-6">Escolha seu Pacote</h2>
-                  <div className="space-y-3">
-                    {(["basic", "premium"] as const).map((pkg) => (
-                      <button
-                        key={pkg}
-                        onClick={() => setPackageType(pkg)}
-                        className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
-                          packageType === pkg
-                            ? "border-yellow-400 bg-yellow-600/30"
-                            : "border-yellow-500/30 bg-yellow-900/20 hover:border-yellow-400/60"
-                        }`}
-                      >
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <p className="font-bold text-lg">
-                              {pkg === "basic" ? "📖 Mapa Astral Básico" : "📚 Mapa Astral Premium"}
-                            </p>
-                            <p className="text-sm text-yellow-300">
-                              {pkg === "basic"
-                                ? "20 páginas com análise completa"
-                                : "30 páginas de mapa + 10 de previsões"}
-                            </p>
-                          </div>
-                          <p className="text-2xl font-bold text-yellow-400">R$ {prices[pkg]}</p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
+                  <h2 className="text-2xl font-bold mb-4 text-yellow-300">Mapa Astral + Previsões</h2>
+                  <p className="text-yellow-200 mb-4">
+                    Análise completa e profunda do seu mapa astral com previsões para o próximo ano.
+                  </p>
+                  <ul className="space-y-2 text-sm text-yellow-300 mb-6">
+                    <li>✨ 7 páginas de análise astrológica completa</li>
+                    <li>✨ 3 páginas de previsões e orientações</li>
+                    <li>✨ Análise de todos os planetas</li>
+                    <li>✨ Interpretação das 12 casas astrológicas</li>
+                    <li>✨ Previsões para o próximo ano</li>
+                    <li>✨ Conselhos para harmonizar suas energias</li>
+                  </ul>
+                  <p className="text-2xl font-bold text-yellow-400">R$ {price}</p>
                 </Card>
 
                 {/* Submit Button */}
@@ -283,7 +264,7 @@ export default function Astral() {
                       Gerando Mapa Astral...
                     </>
                   ) : (
-                    `Gerar Mapa - R$ ${prices[packageType]}`
+                    `Gerar Mapa - R$ ${price}`
                   )}
                 </Button>
               </>
@@ -291,7 +272,7 @@ export default function Astral() {
               <>
                 {/* Result */}
                 <Card className="bg-yellow-900/30 border-yellow-400/50 p-8">
-                  <h2 className="text-2xl font-bold mb-4 text-yellow-300">✨ Seu Mapa Astral</h2>
+                  <h2 className="text-2xl font-bold mb-4 text-yellow-300">Seu Mapa Astral + Previsões</h2>
                   <p className="text-yellow-200 mb-4">
                     <strong>{name}</strong>, seu mapa astral foi gerado com sucesso!
                   </p>
@@ -317,7 +298,7 @@ export default function Astral() {
                       ) : (
                         <>
                           <Download className="w-4 h-4 mr-2" />
-                          📥 Baixar Mapa Astral em PDF
+                          Baixar Mapa Astral em PDF
                         </>
                       )}
                     </Button>
@@ -329,7 +310,7 @@ export default function Astral() {
                       }}
                       className="w-full bg-yellow-700 hover:bg-yellow-800"
                     >
-                      🔄 Gerar Novo Mapa
+                      Gerar Novo Mapa
                     </Button>
                   </div>
                 </Card>
@@ -340,7 +321,7 @@ export default function Astral() {
           {/* Sidebar - Info */}
           <div className="space-y-6">
             <Card className="bg-yellow-900/20 border-yellow-500/30 p-6">
-              <h3 className="text-lg font-bold mb-4 text-yellow-300">ℹ️ Como Funciona</h3>
+              <h3 className="text-lg font-bold mb-4 text-yellow-300">Como Funciona</h3>
               <ul className="space-y-3 text-sm text-yellow-200">
                 <li className="flex gap-3">
                   <span className="text-yellow-400">1.</span>
@@ -348,27 +329,27 @@ export default function Astral() {
                 </li>
                 <li className="flex gap-3">
                   <span className="text-yellow-400">2.</span>
-                  <span>Escolha entre o pacote Básico ou Premium</span>
+                  <span>Receba seu mapa astral completo e detalhado</span>
                 </li>
                 <li className="flex gap-3">
                   <span className="text-yellow-400">3.</span>
-                  <span>Receba seu mapa astral personalizado</span>
+                  <span>Baixe em PDF para guardar e consultar sempre</span>
                 </li>
                 <li className="flex gap-3">
                   <span className="text-yellow-400">4.</span>
-                  <span>Baixe em PDF para guardar</span>
+                  <span>Acesse quando quiser em sua conta</span>
                 </li>
               </ul>
             </Card>
 
             <Card className="bg-yellow-900/20 border-yellow-500/30 p-6">
-              <h3 className="text-lg font-bold mb-4 text-yellow-300">📚 Seus Mapas</h3>
+              <h3 className="text-lg font-bold mb-4 text-yellow-300">Seus Mapas</h3>
               {listMaps.data && listMaps.data.length > 0 ? (
                 <div className="space-y-2">
                   {listMaps.data.map((map) => (
                     <div key={map.id} className="bg-yellow-950/50 p-3 rounded border border-yellow-500/20">
                       <p className="text-sm text-yellow-300">{map.birthDate}</p>
-                      <p className="text-xs text-yellow-400">{map.packageType === 'basic' ? 'Básico' : 'Premium'}</p>
+                      <p className="text-xs text-yellow-400">Mapa Astral + Previsões</p>
                     </div>
                   ))}
                 </div>

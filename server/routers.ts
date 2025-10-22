@@ -244,22 +244,14 @@ Sua interpretação deve:
           birthDate: z.string(),
           birthTime: z.string(),
           birthLocation: z.string(),
-          packageType: z.enum(["basic", "premium"]),
+          packageType: z.enum(["premium"]),
         })
       )
       .mutation(async ({ ctx, input }) => {
-        const prices: Record<string, string> = {
-          basic: "30.00",
-          premium: "50.00",
-        };
-
-        const price = prices[input.packageType];
-        const isBasic = input.packageType === "basic";
+        const price = "40.00";
 
         // Gerar mapa astral detalhado
-        const systemPrompt = isBasic
-          ? `Você é um astrólogo experiente. Gere um mapa astral BASICO com informações essenciais (~5 páginas).\n\nIncluir OBRIGATORIAMENTE:\n1. Signo Solar - personalidade central (1 parágrafo)\n2. Signo Lunar - emoções e vida privada (1 parágrafo)\n3. Ascendente - primeira impressão (1 parágrafo)\n4. Posição dos planetas principais (Sol, Lua, Mercúrio, Vênus, Marte) - resumido\n5. Interpretação geral (1 parágrafo)\n6. Dicas práticas (1 parágrafo)\n\nSeja conciso. Nunca mencione que é uma IA.`
-          : `Você é um astrólogo experiente. Gere um mapa astral PREMIUM muito detalhado e profundo (~10 páginas).\n\nPARTE 1 - MAPA ASTRAL COMPLETO (7 páginas):\n1. Signo Solar - análise profunda da personalidade central (2 parágrafos)\n2. Signo Lunar - análise profunda das emoções e vida privada (2 parágrafos)\n3. Ascendente - primeira impressão e influência (1 parágrafo)\n4. Posição de TODOS os planetas principais (Sol, Lua, Mercúrio, Vênus, Marte, Júpiter, Saturno, Urano, Netuno, Plutão) - análise detalhada de cada um (3 parágrafos)\n5. Casas astrológicas - interpretação das 12 casas (2 parágrafos)\n6. Aspectos principais - relações entre planetas (2 parágrafos)\n7. Interpretação geral profunda (2 parágrafos)\n\nPARTE 2 - PREVISÕES E ORIENTAÇÕES (3 páginas):\n8. Previsões para o próximo ano (2 parágrafos)\n9. Ciclos planetários importantes (1 parágrafo)\n10. Orientações espirituais e práticas (2 parágrafos)\n11. Conselhos para harmonizar energias (1 parágrafo)\n\nSeja muito detalhado, profundo e inspirador. Nunca mencione que é uma IA.`;
+        const systemPrompt = `Você é um astrólogo experiente. Gere um mapa astral muito detalhado e profundo (~10 páginas).\n\nPARTE 1 - MAPA ASTRAL COMPLETO (7 páginas):\n1. Signo Solar - análise profunda da personalidade central (2 parágrafos)\n2. Signo Lunar - análise profunda das emoções e vida privada (2 parágrafos)\n3. Ascendente - primeira impressão e influência (1 parágrafo)\n4. Posição de TODOS os planetas principais (Sol, Lua, Mercúrio, Vênus, Marte, Júpiter, Saturno, Urano, Netuno, Plutão) - análise detalhada de cada um (3 parágrafos)\n5. Casas astrológicas - interpretação das 12 casas (2 parágrafos)\n6. Aspectos principais - relações entre planetas (2 parágrafos)\n7. Interpretação geral profunda (2 parágrafos)\n\nPARTE 2 - PREVISÕES E ORIENTAÇÕES (3 páginas):\n8. Previsões para o próximo ano (2 parágrafos)\n9. Ciclos planetários importantes (1 parágrafo)\n10. Orientações espirituais e práticas (2 parágrafos)\n11. Conselhos para harmonizar energias (1 parágrafo)\n\nSeja muito detalhado, profundo e inspirador. Nunca mencione que é uma IA.`;
 
         const response = await invokeLLM({
           messages: [
@@ -269,7 +261,7 @@ Sua interpretação deve:
             },
             {
               role: "user",
-              content: `Data: ${input.birthDate}\nHora: ${input.birthTime}\nLocal: ${input.birthLocation}\n\nGere um mapa astral ${isBasic ? 'básico' : 'premium'} completo com todas as informações solicitadas.`
+              content: `Data: ${input.birthDate}\nHora: ${input.birthTime}\nLocal: ${input.birthLocation}\n\nGere um mapa astral completo com todas as informações solicitadas.`
             },
           ],
         });
@@ -300,7 +292,7 @@ Sua interpretação deve:
           birthDate: z.string(),
           birthTime: z.string(),
           birthLocation: z.string(),
-          packageType: z.enum(["basic", "premium"]),
+          packageType: z.enum(["premium"]),
           mapContent: z.string(),
         })
       )
