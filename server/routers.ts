@@ -23,6 +23,7 @@ import {
 import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
 import { createPaymentPreference } from "./payment";
+import { generateAstralMapPDF } from "./pdf";
 
 export const appRouter = router({
   system: systemRouter,
@@ -298,6 +299,37 @@ Seja detalhado mas conciso. Nunca mencione que eh uma IA.`
         );
 
         return { mapId, price, mapContent };
+      }),
+
+    generatePDF: publicProcedure
+      .input(
+        z.object({
+          name: z.string(),
+          birthDate: z.string(),
+          birthTime: z.string(),
+          birthLocation: z.string(),
+          packageType: z.enum(["basic", "premium"]),
+          mapContent: z.string(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        try {
+          const pdfBuffer = await generateAstralMapPDF(
+            input.name,
+            input.birthDate,
+            input.birthTime,
+            input.birthLocation,
+            input.packageType,
+            input.mapContent
+          );
+          return {
+            success: true,
+            pdf: pdfBuffer.toString("base64"),
+          };
+        } catch (error) {
+          console.error("Erro ao gerar PDF:", error);
+          throw new Error("Falha ao gerar PDF");
+        }
       }),
 
     generateMap: publicProcedure

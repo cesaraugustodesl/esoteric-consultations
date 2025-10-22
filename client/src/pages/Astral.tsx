@@ -51,6 +51,7 @@ export default function Astral() {
   const [isDownloading, setIsDownloading] = useState(false);
 
   const createMap = trpc.astral.createMap.useMutation();
+  const generatePDF = trpc.astral.generatePDF.useMutation();
   const listMaps = trpc.astral.listMaps.useQuery();
 
   const prices: Record<string, string> = {
@@ -82,44 +83,37 @@ export default function Astral() {
     try {
       setIsDownloading(true);
       
-      // Criar conteúdo para download
-      const content = `
-MAPA ASTRAL PERSONALIZADO
-${'='.repeat(50)}
+      const result = await generatePDF.mutateAsync({
+        name,
+        birthDate,
+        birthTime,
+        birthLocation,
+        packageType,
+        mapContent,
+      });
 
-Nome: ${name}
-Data de Nascimento: ${birthDate}
-Hora de Nascimento: ${birthTime}
-Local de Nascimento: ${birthLocation}
-Pacote: ${packageType === 'basic' ? 'Básico' : 'Premium'}
-Data de Geração: ${new Date().toLocaleDateString('pt-BR')}
+      if (result.success && result.pdf) {
+        // Converter base64 para blob
+        const binaryString = atob(result.pdf);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: 'application/pdf' });
 
-${'='.repeat(50)}
-
-${mapContent}
-
-${'='.repeat(50)}
-Consultas Esotéricas © 2025
-Sabedoria para sua jornada espiritual
-      `;
-
-      // Criar blob e fazer download
-      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      
-      link.setAttribute('href', url);
-      link.setAttribute('download', `Mapa-Astral-${name.replace(/\s+/g, '-')}.txt`);
-      link.style.visibility = 'hidden';
-      
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      URL.revokeObjectURL(url);
+        // Criar link e fazer download
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Mapa-Astral-${name.replace(/\s+/g, '-')}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
     } catch (error) {
-      console.error('Erro ao baixar:', error);
-      alert('Erro ao fazer download. Tente novamente.');
+      console.error('Erro ao baixar PDF:', error);
+      alert('Erro ao fazer download do PDF. Tente novamente.');
     } finally {
       setIsDownloading(false);
     }
@@ -312,18 +306,18 @@ Sabedoria para sua jornada espiritual
                   <div className="space-y-3">
                     <Button
                       onClick={downloadPDF}
-                      disabled={isDownloading}
+                      disabled={isDownloading || generatePDF.isPending}
                       className="w-full bg-yellow-600 hover:bg-yellow-700 text-lg py-6"
                     >
-                      {isDownloading ? (
+                      {isDownloading || generatePDF.isPending ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Gerando arquivo...
+                          Gerando PDF...
                         </>
                       ) : (
                         <>
                           <Download className="w-4 h-4 mr-2" />
-                          📥 Baixar Mapa Astral
+                          📥 Baixar Mapa Astral em PDF
                         </>
                       )}
                     </Button>
@@ -362,7 +356,7 @@ Sabedoria para sua jornada espiritual
                 </li>
                 <li className="flex gap-3">
                   <span className="text-yellow-400">4.</span>
-                  <span>Acesse quando quiser em sua conta</span>
+                  <span>Baixe em PDF para guardar</span>
                 </li>
               </ul>
             </Card>
