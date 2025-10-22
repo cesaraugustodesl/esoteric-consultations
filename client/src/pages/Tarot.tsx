@@ -71,10 +71,23 @@ export default function Tarot() {
       return;
     }
 
+    if (context.trim().length < 5) {
+      alert("Contexto deve ter no mínimo 5 caracteres");
+      return;
+    }
+
     const filledQuestions = questions.slice(0, numberOfQuestions).filter((q) => q.trim());
     if (filledQuestions.length !== numberOfQuestions) {
       alert(`Por favor, preencha todas as ${numberOfQuestions} pergunta(s)`);
       return;
+    }
+
+    // Validate that all questions have at least 3 characters
+    for (let i = 0; i < filledQuestions.length; i++) {
+      if (filledQuestions[i].trim().length < 3) {
+        alert(`Pergunta ${i + 1} deve ter no mínimo 3 caracteres`);
+        return;
+      }
     }
 
     setIsProcessing(true);

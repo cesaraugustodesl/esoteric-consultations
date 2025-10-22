@@ -50,7 +50,7 @@ export const appRouter = router({
     createConsultation: publicProcedure
       .input(
         z.object({
-          context: z.string().min(10),
+          context: z.string().min(5, "Contexto deve ter no mínimo 5 caracteres"),
           questions: z.array(z.string()).min(1).max(5),
           numberOfQuestions: z.number().min(1).max(5),
         })
