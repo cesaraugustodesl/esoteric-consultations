@@ -439,10 +439,16 @@ Sua orientação deve:
           ],
         });
 
-        const guidance =
+        let guidance =
           typeof response.choices[0].message.content === "string"
             ? response.choices[0].message.content
             : "";
+        
+        // Limitar tamanho para evitar erro de banco de dados
+        if (guidance.length > 3000) {
+          guidance = guidance.substring(0, 3000);
+        }
+        
         const chakraMatch = guidance.match(/chakra[^:]*:\s*([^\n]+)/i);
         const chakraFocus = chakraMatch ? chakraMatch[1].trim() : "Chakra do Coração";
 
