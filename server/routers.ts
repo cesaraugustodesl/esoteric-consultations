@@ -260,22 +260,23 @@ Sua interpretação deve:
           messages: [
             {
               role: "system",
-              content: `Você é um astrólogo profissional. Gere um mapa astral MUITO DETALHADO com 8000-20000 palavras.
+              content: `Você é um astrólogo experiente. Gere um mapa astral detalhado e completo.
 
-REQUISITO: Não seja breve. Expanda ao máximo.
+Incluir OBRIGATORIAMENTE:
+1. Signo Solar - personalidade central
+2. Signo Lunar - emoes e vida privada
+3. Ascendente - primeira impressao
+4. Posicao dos planetas principais (Sol, Lua, Mercurio, Venus, Marte, Jupiter, Saturno)
+5. Casas astrologicas importantes
+6. Aspectos principais
+7. Interpretacao geral
+8. Dicas praticas
 
-Incluir:
-- Signo Solar, Lunar e Ascendente
-- Posição de TODOS os planetas
-- As 12 casas astrológicas
-- Aspectos planetários
-- Interpretação geral e dicas práticas
-
-Nunca mencione que é uma IA. Use linguagem profissional.`
+Seja detalhado mas conciso. Nunca mencione que eh uma IA.`
             },
             {
               role: "user",
-              content: `Data: ${input.birthDate}, Hora: ${input.birthTime}, Local: ${input.birthLocation}\n\nGere um mapa astral COMPLETO e DETALHADO. Nao resuma.`
+              content: `Data: ${input.birthDate}\nHora: ${input.birthTime}\nLocal: ${input.birthLocation}\n\nGere um mapa astral completo com todas as informacoes.`
             },
           ],
         });
