@@ -105,6 +105,8 @@ Sua interpretação deve:
       return {
         numerologyId,
         price,
+        fullName: input.fullName,
+        birthDate: input.birthDate,
         destinyNumber,
         soulNumber,
         personalityNumber,
@@ -115,6 +117,7 @@ Sua interpretação deve:
         personalityInterpretation: personalityInterp,
         expressionInterpretation: expressionInterp,
         yearInterpretation: yearInterp,
+        summary: `Leitura numerológica completa de ${input.fullName}`,
       };
     }),
 
