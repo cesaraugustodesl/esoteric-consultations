@@ -20,14 +20,7 @@ export async function generateAstralMapPDF(
   let page = pdfDoc.addPage([595, 842]); // A4
   const { width, height } = page.getSize();
 
-  // Fundo gradiente simulado com cores
-  page.drawRectangle({
-    x: 0,
-    y: 0,
-    width: width,
-    height: height,
-    color: rgb(0.3, 0.1, 0.4), // Roxo escuro
-  });
+  // Fundo branco (sem cor)
 
   // Título
   page.drawText('MAPA ASTRAL PERSONALIZADO', {
@@ -154,13 +147,7 @@ export async function generateAstralMapPDF(
 
   // Última página - Rodapé
   page = pdfDoc.addPage([595, 842]);
-  page.drawRectangle({
-    x: 0,
-    y: 0,
-    width: width,
-    height: height,
-    color: rgb(0.3, 0.1, 0.4),
-  });
+  // Fundo branco (sem cor)
 
   page.drawText('Consultas Esotéricas 2025', {
     x: 50,
