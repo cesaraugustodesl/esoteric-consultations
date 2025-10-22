@@ -28,10 +28,19 @@ export default function Numerology() {
       return;
     }
 
+    // Converter DD/MM/YYYY para YYYY-MM-DD
+    let formattedDate = birthDate;
+    if (birthDate.includes('/')) {
+      const parts = birthDate.split('/');
+      if (parts.length === 3) {
+        formattedDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+      }
+    }
+
     try {
       const response = await createReading.mutateAsync({
         fullName,
-        birthDate,
+        birthDate: formattedDate,
       });
       setResult(response);
       setSubmitted(true);
@@ -248,11 +257,11 @@ export default function Numerology() {
 
                 <div>
                   <label className="block text-sm font-semibold text-yellow-300 mb-2">
-                    Data de Nascimento (YYYY-MM-DD)
+                    Data de Nascimento (DD/MM/YYYY)
                   </label>
                   <Input
                     type="text"
-                    placeholder="1990-05-15"
+                    placeholder="15/05/1990"
                     value={birthDate}
                     onChange={(e) => setBirthDate(e.target.value)}
                     className="bg-yellow-950/50 border-yellow-500/30 text-white placeholder-yellow-400/50 focus:border-yellow-400"
