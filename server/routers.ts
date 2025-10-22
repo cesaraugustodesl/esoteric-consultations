@@ -253,25 +253,29 @@ Sua interpretação deve:
         };
 
         const price = prices[input.packageType];
+        const isBasic = input.packageType === "basic";
 
-        // Gerar mapa astral
+        // Gerar mapa astral detalhado
         const response = await invokeLLM({
           messages: [
             {
               role: "system",
-              content: `Você é um astrólogo com sabedoria ancestral. Gere um mapa astral simplificado de forma clara e direta.
+              content: `Você é um astrólogo profissional. Gere um mapa astral MUITO DETALHADO com 8000-20000 palavras.
 
-Seu mapa deve:
-- Incluir signo solar, lunar e ascendente
-- Explicar a personalidade de forma simples
-- Dar dicas práticas
-- Nunca mencionar que você é uma IA
-- Ter entre 150-200 palavras
-- Soar natural e acessível`,
+REQUISITO: Não seja breve. Expanda ao máximo.
+
+Incluir:
+- Signo Solar, Lunar e Ascendente
+- Posição de TODOS os planetas
+- As 12 casas astrológicas
+- Aspectos planetários
+- Interpretação geral e dicas práticas
+
+Nunca mencione que é uma IA. Use linguagem profissional.`
             },
             {
               role: "user",
-              content: `Data: ${input.birthDate}, Hora: ${input.birthTime}, Local: ${input.birthLocation}`,
+              content: `Data: ${input.birthDate}, Hora: ${input.birthTime}, Local: ${input.birthLocation}\n\nGere um mapa astral COMPLETO e DETALHADO. Nao resuma.`
             },
           ],
         });
