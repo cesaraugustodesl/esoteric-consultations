@@ -15,6 +15,7 @@ export default function Oracle() {
   const [numberOfSymbols, setNumberOfSymbols] = useState(1);
   const [submitted, setSubmitted] = useState(false);
   const [expandedInfo, setExpandedInfo] = useState<string | null>(null);
+  const [result, setResult] = useState<any>(null);
 
   const createConsult = trpc.oracle.createConsult.useMutation();
   const listConsults = trpc.oracle.listConsults.useQuery();
@@ -76,20 +77,92 @@ export default function Oracle() {
     }
 
     try {
-      await createConsult.mutateAsync({
+      const response = await createConsult.mutateAsync({
         oracleType,
         question,
         numberOfSymbols,
       });
+      setResult(response);
       setSubmitted(true);
-      setQuestion("");
-      setOracleType(null);
-      // listConsults.refetch();
+      listConsults.refetch();
     } catch (error) {
       console.error("Erro ao consultar oráculo:", error);
       alert("Erro ao consultar. Tente novamente.");
     }
   };
+
+  const handleNewConsult = () => {
+    setSubmitted(false);
+    setResult(null);
+    setQuestion("");
+    setOracleType(null);
+    setExpandedInfo(null);
+  };
+
+  if (submitted && result) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-950 via-indigo-900 to-black text-white">
+        {/* Header */}
+        <header className="border-b border-purple-700/30 bg-black/40 backdrop-blur-md sticky top-0 z-40">
+          <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
+            <Link href="/">
+              <Button variant="ghost" size="sm" className="text-purple-300 hover:bg-purple-900/30">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Voltar
+              </Button>
+            </Link>
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-6 h-6 text-cyan-400" />
+              <h1 className="text-2xl font-bold">Oráculos Místicos</h1>
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-4xl mx-auto px-4 py-12">
+          <div className="space-y-8">
+            {/* Result Card */}
+            <Card className="bg-gradient-to-br from-cyan-900/40 to-blue-900/40 border-cyan-400/50 p-8">
+              <div className="mb-6">
+                <h2 className="text-3xl font-bold mb-2">✨ {oracleNames[oracleType!]}</h2>
+                <p className="text-cyan-200">Sua pergunta: <span className="italic">{question}</span></p>
+              </div>
+
+              <div className="bg-cyan-950/60 rounded-lg p-6 mb-6 border border-cyan-500/30">
+                <p className="text-lg text-cyan-50 leading-relaxed whitespace-pre-wrap">
+                  {result.interpretation}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
+                <div className="bg-cyan-950/40 p-4 rounded-lg border border-cyan-500/20">
+                  <p className="text-cyan-400 font-semibold">Símbolos Consultados</p>
+                  <p className="text-2xl font-bold text-cyan-300 mt-2">{numberOfSymbols}</p>
+                </div>
+                <div className="bg-cyan-950/40 p-4 rounded-lg border border-cyan-500/20">
+                  <p className="text-cyan-400 font-semibold">Valor da Consulta</p>
+                  <p className="text-2xl font-bold text-cyan-300 mt-2">R$ {result.price}</p>
+                </div>
+              </div>
+
+              <Button
+                onClick={handleNewConsult}
+                className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-lg py-6"
+              >
+                Fazer Nova Consulta
+              </Button>
+            </Card>
+
+            {/* Info */}
+            <div className="bg-cyan-900/20 border border-cyan-500/30 rounded-lg p-6">
+              <p className="text-cyan-200">
+                🔮 A mensagem do oráculo foi revelada. Medite sobre esta orientação e deixe que a sabedoria ancestral guie seus passos. Você pode fazer uma nova consulta sempre que desejar.
+              </p>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-950 via-indigo-900 to-black text-white">
