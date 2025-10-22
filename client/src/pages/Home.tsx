@@ -89,8 +89,7 @@ export default function Home() {
                 Descubra os mistérios do universo no momento do seu nascimento. Signos, planetas e tendências.
               </p>
               <div className="space-y-2 mb-6 text-sm text-yellow-300">
-                <p>✨ Básico - R$ 30,00</p>
-                <p>✨ Premium - R$ 50,00</p>
+                <p>✨ Mapa Astral + Previsões - R$ 40,00</p>
               </div>
               <Link href="/astral">
                 <Button className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700">
