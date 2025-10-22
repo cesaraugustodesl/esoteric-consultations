@@ -2,7 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Star, ArrowLeft, Loader2 } from "lucide-react";
+import { Star, ArrowLeft, Loader2, Download } from "lucide-react";
 import { Link } from "wouter";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
@@ -47,6 +47,8 @@ export default function Astral() {
   const [packageType, setPackageType] = useState<"basic" | "premium">("basic");
   const [submitted, setSubmitted] = useState(false);
   const [mapContent, setMapContent] = useState<string | null>(null);
+  const [mapId, setMapId] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const createMap = trpc.astral.createMap.useMutation();
   const listMaps = trpc.astral.listMaps.useQuery();
@@ -74,6 +76,55 @@ export default function Astral() {
     setShowCities(false);
   };
 
+  const downloadPDF = async () => {
+    if (!mapContent || !name) return;
+    
+    try {
+      setIsDownloading(true);
+      
+      // Criar conteúdo para download
+      const content = `
+MAPA ASTRAL PERSONALIZADO
+${'='.repeat(50)}
+
+Nome: ${name}
+Data de Nascimento: ${birthDate}
+Hora de Nascimento: ${birthTime}
+Local de Nascimento: ${birthLocation}
+Pacote: ${packageType === 'basic' ? 'Básico' : 'Premium'}
+Data de Geração: ${new Date().toLocaleDateString('pt-BR')}
+
+${'='.repeat(50)}
+
+${mapContent}
+
+${'='.repeat(50)}
+Consultas Esotéricas © 2025
+Sabedoria para sua jornada espiritual
+      `;
+
+      // Criar blob e fazer download
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      
+      link.setAttribute('href', url);
+      link.setAttribute('download', `Mapa-Astral-${name.replace(/\s+/g, '-')}.txt`);
+      link.style.visibility = 'hidden';
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Erro ao baixar:', error);
+      alert('Erro ao fazer download. Tente novamente.');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!name.trim()) {
       alert("Por favor, digite seu nome");
@@ -92,8 +143,8 @@ export default function Astral() {
         packageType,
       });
       setMapContent(result.mapContent);
+      setMapId(result.mapId);
       setSubmitted(true);
-      // Não limpa os dados para permitir nova consulta
     } catch (error) {
       console.error("Erro ao criar mapa astral:", error);
       alert("Erro ao criar mapa. Tente novamente.");
@@ -250,24 +301,41 @@ export default function Astral() {
                   <p className="text-yellow-200 mb-4">
                     <strong>{name}</strong>, seu mapa astral foi gerado com sucesso!
                   </p>
+                  <p className="text-sm text-yellow-300 mb-6">
+                    Este mapa está salvo em sua conta e você pode acessá-lo a qualquer momento.
+                  </p>
                   {mapContent && (
                     <div className="bg-yellow-950/50 border border-yellow-500/30 rounded-lg p-6 max-h-96 overflow-y-auto mb-6">
-                      <p className="text-yellow-100 leading-relaxed whitespace-pre-wrap">{mapContent}</p>
+                      <p className="text-yellow-100 leading-relaxed whitespace-pre-wrap text-sm">{mapContent}</p>
                     </div>
                   )}
                   <div className="space-y-3">
-                    <Button className="w-full bg-yellow-600 hover:bg-yellow-700">
-                      📥 Baixar PDF
+                    <Button
+                      onClick={downloadPDF}
+                      disabled={isDownloading}
+                      className="w-full bg-yellow-600 hover:bg-yellow-700 text-lg py-6"
+                    >
+                      {isDownloading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Gerando arquivo...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-4 h-4 mr-2" />
+                          📥 Baixar Mapa Astral
+                        </>
+                      )}
                     </Button>
                     <Button
                       onClick={() => {
                         setSubmitted(false);
                         setMapContent(null);
+                        setMapId(null);
                       }}
-                      variant="outline"
-                      className="w-full border-yellow-500/30 text-yellow-300 hover:bg-yellow-900/30"
+                      className="w-full bg-yellow-700 hover:bg-yellow-800"
                     >
-                      Gerar Outro Mapa
+                      🔄 Gerar Novo Mapa
                     </Button>
                   </div>
                 </Card>
@@ -275,47 +343,48 @@ export default function Astral() {
             )}
           </div>
 
-          {/* Info Sidebar */}
-          <div>
-            <Card className="bg-yellow-900/20 border-yellow-500/30 p-6 sticky top-24">
-              <h3 className="text-lg font-bold mb-4">ℹ️ Sobre o Mapa</h3>
-              <div className="space-y-4 text-sm text-yellow-200">
-                <div>
-                  <p className="font-bold text-yellow-300 mb-1">Pacote Básico</p>
-                  <ul className="text-xs space-y-1 text-yellow-300">
-                    <li>✓ Signo Solar</li>
-                    <li>✓ Signo Lunar</li>
-                    <li>✓ Ascendente</li>
-                    <li>✓ Posição dos Planetas</li>
-                    <li>✓ Análise de Casas</li>
-                    <li>✓ 20 páginas</li>
-                  </ul>
+          {/* Sidebar - Info */}
+          <div className="space-y-6">
+            <Card className="bg-yellow-900/20 border-yellow-500/30 p-6">
+              <h3 className="text-lg font-bold mb-4 text-yellow-300">ℹ️ Como Funciona</h3>
+              <ul className="space-y-3 text-sm text-yellow-200">
+                <li className="flex gap-3">
+                  <span className="text-yellow-400">1.</span>
+                  <span>Preencha seus dados de nascimento com precisão</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="text-yellow-400">2.</span>
+                  <span>Escolha entre o pacote Básico ou Premium</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="text-yellow-400">3.</span>
+                  <span>Receba seu mapa astral personalizado</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="text-yellow-400">4.</span>
+                  <span>Acesse quando quiser em sua conta</span>
+                </li>
+              </ul>
+            </Card>
+
+            <Card className="bg-yellow-900/20 border-yellow-500/30 p-6">
+              <h3 className="text-lg font-bold mb-4 text-yellow-300">📚 Seus Mapas</h3>
+              {listMaps.data && listMaps.data.length > 0 ? (
+                <div className="space-y-2">
+                  {listMaps.data.map((map) => (
+                    <div key={map.id} className="bg-yellow-950/50 p-3 rounded border border-yellow-500/20">
+                      <p className="text-sm text-yellow-300">{map.birthDate}</p>
+                      <p className="text-xs text-yellow-400">{map.packageType === 'basic' ? 'Básico' : 'Premium'}</p>
+                    </div>
+                  ))}
                 </div>
-                <div className="pt-4 border-t border-yellow-500/30">
-                  <p className="font-bold text-yellow-300 mb-1">Pacote Premium</p>
-                  <ul className="text-xs space-y-1 text-yellow-300">
-                    <li>✓ Tudo do Básico</li>
-                    <li>✓ Aspectos Planetários</li>
-                    <li>✓ Nodos Lunares</li>
-                    <li>✓ Previsões Anuais</li>
-                    <li>✓ 30 + 10 páginas</li>
-                  </ul>
-                </div>
-              </div>
+              ) : (
+                <p className="text-sm text-yellow-400">Nenhum mapa gerado ainda</p>
+              )}
             </Card>
           </div>
-        </div>
-
-        {/* Info */}
-        <div className="mt-8 bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-6">
-          <p className="text-yellow-200">
-            ✨ Seu mapa astral é um retrato único do céu no momento exato do seu nascimento.
-            Ele revela seus dons naturais, desafios e o caminho do seu destino. Quanto mais precisos
-            forem seus dados (especialmente a hora), mais preciso será seu mapa.
-          </p>
         </div>
       </main>
     </div>
   );
 }
-

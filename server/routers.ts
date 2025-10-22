@@ -106,7 +106,7 @@ export const appRouter = router({
                 role: "system",
                 content: `Você é um intérprete de Tarot com sabedoria ancestral. Responda com profundidade, detalhes e insights genuínos, mantendo linguagem simples e acessível.
 
-REQUISITO OBRIGATÓRIO: Sua resposta DEVE ter entre 150-200 palavras. Não seja breve. Expanda a resposta com reflexões e insights.
+REQUISITO OBRIGATÓRIO: Sua resposta DEVE ter entre 250-350 palavras. Não seja breve. Expanda MUITO a resposta com reflexões profundas, insights espirituais e orientações práticas.
 
 Sua resposta deve:
 - Começar com uma resposta clara (sim/não/talvez/tudo indica que sim)
@@ -121,7 +121,7 @@ Sua resposta deve:
               },
               {
                 role: "user",
-                content: `Contexto da situação: ${context}\n\nPergunta para leitura de Tarot: ${question}\n\nResponda com profundidade (150-200 palavras). Não resuma.`,
+                content: `Contexto da situação: ${context}\n\nPergunta para leitura de Tarot: ${question}\n\nResponda com profundidade (250-350 palavras). Não resuma. Seja muito detalhado.`,
               },
             ],
           });
