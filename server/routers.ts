@@ -96,22 +96,23 @@ export const appRouter = router({
         const questions = JSON.parse(consultation.questions);
         const context = consultation.context;
         const responses: string[] = [];
+        const responsesWithQuestions: Array<{question: string, answer: string}> = [];
 
+        // Responder cada pergunta
         for (const question of questions) {
           const response = await invokeLLM({
             messages: [
               {
                 role: "system",
-                content: `Você é um intérprete de Tarot com sabedoria ancestral. Responda de forma clara, direta e objetiva, sem rodeios.
+                content: `Você é um intérprete de Tarot com sabedoria ancestral. Responda de forma clara, direta e objetiva.
 
-Suas respostas devem:
-- Ser diretas e focadas na pergunta
+Sua resposta deve:
+- Ser direta e focada na pergunta
 - Usar linguagem simples e clara
-- Oferecer orientação prática e útil
+- Começar com uma resposta direta (sim/não/talvez/tudo indica que sim)
+- Oferecer explicação em 2-3 linhas
 - Nunca mencionar que você é uma IA
-- Ter entre 100-150 palavras
-- Soar natural e acessível
-- Responder especificamente o que foi perguntado`,
+- Ter entre 50-100 palavras`,
               },
               {
                 role: "user",
@@ -124,15 +125,43 @@ Suas respostas devem:
           const contentStr =
             typeof content === "string" ? content : "";
           responses.push(contentStr);
+          responsesWithQuestions.push({ question, answer: contentStr });
         }
 
+        // Gerar resumo geral
+        const resumoResponse = await invokeLLM({
+          messages: [
+            {
+              role: "system",
+              content: `Você é um intérprete de Tarot com sabedoria ancestral. Crie um resumo geral das leituras.
+
+O resumo deve:
+- Sintetizar as principais tendências das respostas
+- Oferecer uma visão geral da situação
+- Ser inspirador e prático
+- Ter entre 100-150 palavras
+- Nunca mencionar que você é uma IA`,
+            },
+            {
+              role: "user",
+              content: `Contexto: ${context}\n\nPerguntas e respostas:\n${responsesWithQuestions.map(r => `P: ${r.question}\nR: ${r.answer}`).join("\n\n")}`,
+            },
+          ],
+        });
+
+        const resumoContent = typeof resumoResponse.choices[0].message.content === "string"
+          ? resumoResponse.choices[0].message.content
+          : "";
+
+        const formattedResponse = `${responsesWithQuestions.map((r, i) => `**${i + 1}. ${r.question}**\n${r.answer}`).join("\n\n")}\n\n---\n\n**Contexto Geral**\n${resumoContent}`;
+
         await updateTarotConsultation(input.consultationId, {
-          responses,
+          responses: [formattedResponse],
           status: "completed",
           completedAt: new Date(),
         });
 
-        return { responses };
+        return { responses: [formattedResponse] };
       }),
 
     listConsultations: publicProcedure.query(async ({ ctx }) => {
@@ -147,7 +176,7 @@ Suas respostas devem:
    * Dream Interpretations (Free)
    */
   dreams: router({
-    interpretDream: publicProcedure
+    createInterpretation: publicProcedure
       .input(z.object({ dreamDescription: z.string().min(20) }))
       .mutation(async ({ ctx, input }) => {
         const response = await invokeLLM({
@@ -223,15 +252,15 @@ Sua interpretação deve:
           messages: [
             {
               role: "system",
-              content: `Voce eh um astrologo com sabedoria ancestral. Gere um mapa astral simplificado de forma clara e direta.
+              content: `Você é um astrólogo com sabedoria ancestral. Gere um mapa astral simplificado de forma clara e direta.
 
 Seu mapa deve:
 - Incluir signo solar, lunar e ascendente
 - Explicar a personalidade de forma simples
-- Dar dicas praticas
-- Nunca mencionar que voce eh uma IA
+- Dar dicas práticas
+- Nunca mencionar que você é uma IA
 - Ter entre 150-200 palavras
-- Soar natural e acessivel`,
+- Soar natural e acessível`,
             },
             {
               role: "user",
@@ -297,22 +326,22 @@ Seu mapa deve:
         const oracleNames: Record<string, string> = {
           runas: "Runas",
           anjos: "Anjos",
-          buzios: "Buzios",
+          buzios: "Búzios",
         };
 
         const response = await invokeLLM({
           messages: [
             {
               role: "system",
-              content: `Voce eh um interprete de ${oracleNames[input.oracleType]} com sabedoria ancestral. Responda de forma clara e direta.
+              content: `Você é um intérprete de ${oracleNames[input.oracleType]} com sabedoria ancestral. Responda de forma clara e direta.
 
 Sua resposta deve:
-- Selecionar ${input.numberOfSymbols} simbolo(s)
+- Selecionar ${input.numberOfSymbols} símbolo(s)
 - Explicar o significado de forma simples
-- Responder a pergunta de forma pratica
-- Nunca mencionar que voce eh uma IA
+- Responder a pergunta de forma prática
+- Nunca mencionar que você é uma IA
 - Ter entre 100-150 palavras
-- Soar natural e acessivel`,
+- Soar natural e acessível`,
             },
             {
               role: "user",
@@ -411,101 +440,64 @@ Sua orientação deve:
    * Payments
    */
   payments: router({
-    createPaymentLink: protectedProcedure
+    createPaymentLink: publicProcedure
       .input(
         z.object({
-          consultationId: z.string(),
+          consultationType: z.enum(["tarot", "astral", "oracle"]),
           amount: z.string(),
-          numberOfQuestions: z.number(),
+          consultationId: z.string(),
         })
       )
       .mutation(async ({ ctx, input }) => {
         try {
+          const items = [{
+            title: `Consulta de ${input.consultationType}`,
+            quantity: 1,
+            unit_price: parseFloat(input.amount),
+          }];
           const preference = await createPaymentPreference(
             input.consultationId,
-            [
-              {
-                title: `Leitura de Tarot - ${input.numberOfQuestions} pergunta(s)`,
-                quantity: 1,
-                unit_price: parseFloat(input.amount),
-                description: "Consulta esoterica com respostas profundas do plano espiritual",
-              },
-            ],
-            ctx.user.email || "user@example.com",
-            ctx.user.id
+            items,
+            ctx.user?.email || "guest@example.com",
+            ctx.user?.id || "anonymous"
+          );
+
+          const userId: string = ctx.user?.id || "anonymous";
+          const preferenceId: string = preference.id || "";
+          const paymentId = await createPayment(
+            userId,
+            input.consultationId,
+            input.amount,
+            preferenceId
           );
 
           return {
-            paymentLink: preference.init_point,
+            paymentId,
             preferenceId: preference.id,
+            initPoint: preference.init_point,
           };
         } catch (error) {
-          console.error("Erro ao criar link de pagamento:", error);
-          throw new Error("Falha ao criar link de pagamento");
+          throw new Error("Failed to create payment preference");
         }
       }),
 
-    createPayment: protectedProcedure
-      .input(
-        z.object({
-          consultationId: z.string(),
-          amount: z.string(),
-          paymentMethod: z.string(),
-        })
-      )
-      .mutation(async ({ ctx, input }) => {
-        const paymentId = await createPayment(
-          ctx.user.id,
-          input.consultationId,
-          input.amount,
-          input.paymentMethod
-        );
-
-        // Notify owner of new payment
-        await notifyOwner({
-          title: "Novo Pagamento Recebido",
-          content: `Usuário ${ctx.user.name} iniciou um pagamento de R$ ${input.amount} para consulta de Tarot.`,
-        });
-
-        return { paymentId };
+    getPaymentStatus: publicProcedure
+      .input(z.object({ paymentId: z.string() }))
+      .query(async ({ input }) => {
+        const payment = await getPayment(input.paymentId);
+        return payment;
       }),
 
-    updatePaymentStatus: protectedProcedure
+    updatePaymentStatus: publicProcedure
       .input(
         z.object({
           paymentId: z.string(),
           status: z.enum(["pending", "approved", "failed", "refunded"]),
-          externalPaymentId: z.string().optional(),
         })
       )
-      .mutation(async ({ ctx, input }) => {
-        const payment = await getPayment(input.paymentId);
-        if (!payment || payment.userId !== ctx.user.id) {
-          throw new Error("Payment not found");
-        }
-
-        await updatePayment(input.paymentId, {
-          status: input.status,
-          externalPaymentId: input.externalPaymentId,
-        });
-
-        if (input.status === "approved") {
-          await updateTarotConsultation(payment.consultationId, {
-            paymentStatus: "completed",
-          });
-        }
-
+      .mutation(async ({ input }) => {
+        await updatePayment(input.paymentId, { status: input.status });
         return { success: true };
-      }),
-
-    getPayment: protectedProcedure
-      .input(z.object({ paymentId: z.string() }))
-      .query(async ({ ctx, input }) => {
-        const payment = await getPayment(input.paymentId);
-        if (!payment || payment.userId !== ctx.user.id) {
-          return null;
-        }
-        return payment;
       }),
   }),
 });

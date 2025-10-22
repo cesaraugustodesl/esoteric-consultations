@@ -14,7 +14,7 @@ export default function Dreams() {
   const [interpretation, setInterpretation] = useState<string | null>(null);
   const [symbols, setSymbols] = useState<string[]>([]);
 
-  const interpretDream = trpc.dreams.interpretDream.useMutation();
+  const interpretDream = trpc.dreams.createInterpretation.useMutation();
   const listDreams = trpc.dreams.listInterpretations.useQuery();
 
   const handleSubmit = async () => {
