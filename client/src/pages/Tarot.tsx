@@ -46,8 +46,6 @@ export default function Tarot() {
       return;
     }
 
-    // Teste: remover requisito de autenticação
-
     try {
       const result = await createConsultation.mutateAsync({
         context,
@@ -57,7 +55,6 @@ export default function Tarot() {
 
       setConsultationId(result.consultationId);
 
-      // Gera as respostas
       const responses = await generateResponses.mutateAsync({
         consultationId: result.consultationId,
       });
@@ -70,11 +67,41 @@ export default function Tarot() {
     }
   };
 
+  const parseResponses = (responseText: string) => {
+    const parts = responseText.split("---");
+    const questionAnswers: Array<{ question: string; answer: string }> = [];
+    let contextGeral = "";
+
+    if (parts.length > 0) {
+      const mainContent = parts[0];
+      const contextContent = parts[1];
+
+      const items = mainContent.split(/\n(?=\*\*\d+\.)/);
+      items.forEach((item) => {
+        const match = item.match(/\*\*(\d+\.\s[^*]+)\*\*\n([\s\S]*?)(?=\n\n|$)/);
+        if (match) {
+          questionAnswers.push({
+            question: match[1].replace(/\*\*/g, ""),
+            answer: match[2].trim(),
+          });
+        }
+      });
+
+      if (contextContent) {
+        contextGeral = contextContent.replace(/\*\*Contexto Geral\*\*\n/, "").trim();
+      }
+    }
+
+    return { questionAnswers, contextGeral };
+  };
+
+  const { questionAnswers, contextGeral } = response ? parseResponses(response) : { questionAnswers: [], contextGeral: "" };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-950 via-indigo-900 to-black text-white">
       {/* Header */}
       <header className="border-b border-purple-700/30 bg-black/40 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
+        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center gap-4">
           <Link href="/">
             <Button variant="ghost" size="sm" className="text-purple-300 hover:bg-purple-900/30">
               <ArrowLeft className="w-4 h-4 mr-2" />
@@ -88,90 +115,119 @@ export default function Tarot() {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-12">
+      <main className="max-w-6xl mx-auto px-4 py-12">
         <div className="grid md:grid-cols-3 gap-8">
           {/* Input Section */}
           <div className="md:col-span-2 space-y-6">
-            {/* Context */}
-            <Card className="bg-purple-900/20 border-purple-500/30 p-8">
-              <h2 className="text-2xl font-bold mb-6">Contextualize sua Situação</h2>
-              <Textarea
-                value={context}
-                onChange={(e) => setContext(e.target.value)}
-                placeholder="Descreva brevemente a situação ou área da vida sobre a qual deseja orientação..."
-                className="bg-purple-950/50 border-purple-500/30 text-white placeholder-purple-400/50 focus:border-purple-400"
-                rows={4}
-              />
-              <p className="text-sm text-purple-300 mt-3">
-                Quanto mais detalhes você fornecer, mais profunda será a leitura.
-              </p>
-            </Card>
+            {!submitted ? (
+              <>
+                {/* Context */}
+                <Card className="bg-purple-900/20 border-purple-500/30 p-8">
+                  <h2 className="text-2xl font-bold mb-6">Contextualize sua Situação</h2>
+                  <Textarea
+                    value={context}
+                    onChange={(e) => setContext(e.target.value)}
+                    placeholder="Descreva brevemente a situação ou área da vida sobre a qual deseja orientação..."
+                    className="bg-purple-950/50 border-purple-500/30 text-white placeholder-purple-400/50 focus:border-purple-400"
+                    rows={4}
+                  />
+                  <p className="text-sm text-purple-300 mt-3">
+                    Quanto mais detalhes você fornecer, mais profunda será a leitura.
+                  </p>
+                </Card>
 
-            {/* Number of Questions */}
-            <Card className="bg-purple-900/20 border-purple-500/30 p-8">
-              <h2 className="text-2xl font-bold mb-6">Quantas Perguntas?</h2>
-              <div className="grid grid-cols-4 gap-3">
-                {[1, 2, 3, 5].map((num) => (
-                  <button
-                    key={num}
-                    onClick={() => setNumberOfQuestions(num)}
-                    className={`p-4 rounded-lg border-2 transition-all ${
-                      numberOfQuestions === num
-                        ? "border-purple-400 bg-purple-600/30"
-                        : "border-purple-500/30 bg-purple-900/20 hover:border-purple-400/60"
-                    }`}
-                  >
-                    <div className="text-2xl font-bold mb-2">{num}</div>
-                    <div className="text-sm text-purple-300">R$ {prices[num]}</div>
-                  </button>
-                ))}
-              </div>
-            </Card>
-
-            {/* Questions */}
-            <Card className="bg-purple-900/20 border-purple-500/30 p-8">
-              <h2 className="text-2xl font-bold mb-6">Suas Perguntas</h2>
-              <div className="space-y-4">
-                {Array.from({ length: numberOfQuestions }).map((_, index) => (
-                  <div key={index}>
-                    <label className="block text-sm text-purple-300 mb-2">
-                      Pergunta {index + 1}
-                    </label>
-                    <Textarea
-                      value={questions[index]}
-                      onChange={(e) => handleQuestionChange(index, e.target.value)}
-                      placeholder={`Formule sua pergunta com clareza e intenção...`}
-                      className="bg-purple-950/50 border-purple-500/30 text-white placeholder-purple-400/50 focus:border-purple-400"
-                      rows={2}
-                    />
+                {/* Number of Questions */}
+                <Card className="bg-purple-900/20 border-purple-500/30 p-8">
+                  <h2 className="text-2xl font-bold mb-6">Quantas Perguntas?</h2>
+                  <div className="grid grid-cols-4 gap-3">
+                    {[1, 2, 3, 5].map((num) => (
+                      <button
+                        key={num}
+                        onClick={() => setNumberOfQuestions(num)}
+                        className={`p-4 rounded-lg border-2 transition-all ${
+                          numberOfQuestions === num
+                            ? "border-purple-400 bg-purple-600/30"
+                            : "border-purple-500/30 bg-purple-900/20 hover:border-purple-400/60"
+                        }`}
+                      >
+                        <div className="text-2xl font-bold mb-2">{num}</div>
+                        <div className="text-sm text-purple-300">R$ {prices[num]}</div>
+                      </button>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </Card>
+                </Card>
 
-            {/* Submit Button */}
-            <Button
-              onClick={handleSubmit}
-              disabled={createConsultation.isPending || generateResponses.isPending}
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-lg py-6"
-            >
-              {createConsultation.isPending || generateResponses.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Consultando...
-                </>
-              ) : (
-                `Consultar Tarot - R$ ${prices[numberOfQuestions]}`
-              )}
-            </Button>
+                {/* Questions */}
+                <Card className="bg-purple-900/20 border-purple-500/30 p-8">
+                  <h2 className="text-2xl font-bold mb-6">Suas Perguntas</h2>
+                  <div className="space-y-4">
+                    {Array.from({ length: numberOfQuestions }).map((_, index) => (
+                      <div key={index}>
+                        <label className="block text-sm text-purple-300 mb-2">
+                          Pergunta {index + 1}
+                        </label>
+                        <Textarea
+                          value={questions[index]}
+                          onChange={(e) => handleQuestionChange(index, e.target.value)}
+                          placeholder={`Formule sua pergunta com clareza e intenção...`}
+                          className="bg-purple-950/50 border-purple-500/30 text-white placeholder-purple-400/50 focus:border-purple-400"
+                          rows={2}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </Card>
 
-            {/* Response */}
-            {submitted && response && (
-              <Card className="bg-purple-900/30 border-purple-400/50 p-8">
-                <h3 className="text-xl font-bold mb-4 text-purple-300">Mensagem do Plano Espiritual</h3>
-                <p className="text-purple-100 leading-relaxed">{response}</p>
+                {/* Submit Button */}
+                <Button
+                  onClick={handleSubmit}
+                  disabled={createConsultation.isPending || generateResponses.isPending}
+                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-lg py-6"
+                >
+                  {createConsultation.isPending || generateResponses.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Consultando...
+                    </>
+                  ) : (
+                    `Consultar Tarot - R$ ${prices[numberOfQuestions]}`
+                  )}
+                </Button>
+              </>
+            ) : (
+              <>
+                {/* Response Cards */}
+                <div className="space-y-4">
+                  <h2 className="text-2xl font-bold mb-6">Mensagem do Plano Espiritual</h2>
+                  
+                  {questionAnswers.map((item, index) => (
+                    <Card key={index} className="bg-purple-900/30 border-purple-400/50 p-6 hover:border-purple-300/80 transition-all">
+                      <h3 className="text-lg font-bold mb-3 text-purple-200">{item.question}</h3>
+                      <p className="text-purple-100 leading-relaxed">{item.answer}</p>
+                    </Card>
+                  ))}
 
-              </Card>
+                  {contextGeral && (
+                    <Card className="bg-gradient-to-br from-pink-900/40 to-purple-900/40 border-pink-400/50 p-8 mt-8">
+                      <h3 className="text-xl font-bold mb-4 text-pink-300">✨ Contexto Geral</h3>
+                      <p className="text-purple-100 leading-relaxed">{contextGeral}</p>
+                    </Card>
+                  )}
+                </div>
+
+                <Button
+                  onClick={() => {
+                    setSubmitted(false);
+                    setResponse(null);
+                    setContext("");
+                    setQuestions(["", "", "", "", ""]);
+                    setNumberOfQuestions(1);
+                  }}
+                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-lg py-6 mt-6"
+                >
+                  Nova Consulta
+                </Button>
+              </>
             )}
           </div>
 
