@@ -139,7 +139,7 @@ Sua resposta deve:
           messages: [
             {
               role: "system",
-                content: `Você é um intérprete de Tarot com sabedoria ancestral. Crie um resumo geral profundo das leituras.
+              content: `Você é um intérprete de Tarot com sabedoria ancestral. Crie um resumo geral profundo das leituras.
 
 O resumo deve:
 - Sintetizar as principais tendências e padrões
