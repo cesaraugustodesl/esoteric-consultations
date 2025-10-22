@@ -41,6 +41,7 @@ export const paymentRouter = router({
               title: input.description,
               quantity: 1,
               unit_price: input.amount,
+              currency_id: "BRL",
             },
           ],
           payer: {
@@ -52,8 +53,10 @@ export const paymentRouter = router({
             failure: `${baseUrl}/payment/failure`,
             pending: `${baseUrl}/payment/pending`,
           },
+
           external_reference: input.consultationId,
           notification_url: `${baseUrl}/api/payment-webhook`,
+          statement_descriptor: "CONSULTAS ESOTERIC",
         };
 
         console.log("Enviando preferência ao Mercado Pago:", { consultationId: input.consultationId, amount: input.amount });
