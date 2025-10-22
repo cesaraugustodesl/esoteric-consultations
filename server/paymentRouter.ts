@@ -9,19 +9,22 @@ const MERCADO_PAGO_PUBLIC_KEY = process.env.MERCADO_PAGO_PUBLIC_KEY;
 
 export const paymentRouter = router({
   // Criar preferência de pagamento no Mercado Pago
-  createPreference: protectedProcedure
+  createPreference: publicProcedure
     .input(
       z.object({
         consultationType: z.enum(["tarot", "astral", "oracle", "numerology"]),
         amount: z.number().positive(),
         description: z.string(),
         consultationId: z.string(),
+        userEmail: z.string().email().optional(),
+        userName: z.string().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.user) {
-        throw new Error("Usuário não autenticado");
-      }
+      // Allow anonymous users - use provided email/name or defaults
+      const userEmail = input.userEmail || ctx.user?.email || "guest@consultas-esoteric.com";
+      const userName = input.userName || ctx.user?.name || "Visitante";
+      const userId = ctx.user?.id || `guest_${Date.now()}`;
 
       // Validar token de acesso
       if (!MERCADO_PAGO_ACCESS_TOKEN) {
@@ -41,8 +44,8 @@ export const paymentRouter = router({
             },
           ],
           payer: {
-            email: ctx.user.email || "customer@example.com",
-            name: ctx.user.name || "Cliente",
+            email: userEmail,
+            name: userName,
           },
           back_urls: {
             success: `${baseUrl}/payment/success`,
@@ -95,7 +98,7 @@ export const paymentRouter = router({
         const paymentId = `payment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         await db.insert(payments).values({
           id: paymentId,
-          userId: ctx.user.id,
+          userId: userId,
           consultationId: input.consultationId,
           amount: input.amount.toString(),
           paymentMethod: "mercado_pago",
@@ -118,13 +121,9 @@ export const paymentRouter = router({
     }),
 
   // Verificar status do pagamento
-  checkPaymentStatus: protectedProcedure
+  checkPaymentStatus: publicProcedure
     .input(z.object({ paymentId: z.string() }))
     .query(async ({ ctx, input }) => {
-      if (!ctx.user) {
-        throw new Error("Usuário não autenticado");
-      }
-
       try {
         const db = await getDb();
         if (!db) throw new Error("Banco de dados não disponível");
@@ -132,7 +131,7 @@ export const paymentRouter = router({
         const payment = await db.select().from(payments).where(eq(payments.id, input.paymentId)).limit(1);
         const paymentRecord = payment[0];
 
-        if (!paymentRecord || paymentRecord.userId !== ctx.user.id) {
+        if (!paymentRecord) {
           throw new Error("Pagamento não encontrado");
         }
 

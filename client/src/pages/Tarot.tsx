@@ -1,4 +1,4 @@
-import { useAuth } from "@/_core/hooks/useAuth";
+
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
 
 export default function Tarot() {
-  const { isAuthenticated } = useAuth();
+
   const [, setLocation] = useLocation();
   const [context, setContext] = useState("");
   const [questions, setQuestions] = useState<string[]>(["", "", "", "", ""]);
@@ -162,18 +162,7 @@ export default function Tarot() {
     return { questionAnswers, contextGeral };
   };
 
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-purple-950 via-indigo-950 to-purple-900 flex items-center justify-center">
-        <Card className="bg-purple-900/30 border-purple-400/30 p-8 text-center">
-          <p className="text-purple-200 mb-4">Você precisa estar autenticado para acessar este serviço.</p>
-          <a href={getLoginUrl()}>
-            <Button className="bg-gradient-to-r from-yellow-600 to-orange-600">Fazer Login</Button>
-          </a>
-        </Card>
-      </div>
-    );
-  }
+
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-950 via-indigo-950 to-purple-900">
