@@ -4,24 +4,24 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Sparkles, ArrowLeft, Loader2, ChevronDown } from "lucide-react";
-import { Link } from "wouter";
-import { useState } from "react";
+import { Link, useLocation } from "wouter";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
+import { getLoginUrl } from "@/const";
 
 export default function Oracle() {
-  const { user } = useAuth();
+  const { isAuthenticated } = useAuth();
+  const [, setLocation] = useLocation();
   const [oracleType, setOracleType] = useState<"runas" | "anjos" | "buzios" | null>(null);
   const [question, setQuestion] = useState("");
   const [numberOfSymbols, setNumberOfSymbols] = useState(1);
-  const [submitted, setSubmitted] = useState(false);
+  const [stage, setStage] = useState<"form" | "payment" | "response">("form");
   const [expandedInfo, setExpandedInfo] = useState<string | null>(null);
   const [result, setResult] = useState<any>(null);
-
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  const [consultationId, setConsultationId] = useState<string | null>(null);
+  const [oracleId, setOracleId] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const createConsult = trpc.oracle.createConsult.useMutation();
-  const listConsults = trpc.oracle.listConsults.useQuery();
   const createPaymentPreference = trpc.payment.createPreference.useMutation();
 
   const prices: Record<number, string> = {
@@ -69,6 +69,28 @@ export default function Oracle() {
     }
   };
 
+  // Check if returning from payment
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const paid = params.get("paid");
+    const oracleIdParam = params.get("oracle");
+
+    if (paid === "true" && oracleIdParam) {
+      setOracleId(oracleIdParam);
+      setStage("response");
+      loadOracleResult(oracleIdParam);
+    }
+  }, []);
+
+  const loadOracleResult = async (id: string) => {
+    try {
+      // The result should already be in the database from createConsult
+      // We'll fetch it if needed
+    } catch (error) {
+      console.error("Erro ao carregar resultado:", error);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!oracleType) {
       alert("Por favor, escolha um tipo de oráculo");
@@ -80,31 +102,277 @@ export default function Oracle() {
       return;
     }
 
+    setIsProcessing(true);
     try {
       const result = await createConsult.mutateAsync({
         oracleType,
         question,
         numberOfSymbols,
       });
-      setConsultationId(result.oracleId);
+      setOracleId(result.oracleId);
       setResult(result);
-      setSubmitted(true);
-      listConsults.refetch();
+      setStage("payment");
     } catch (error) {
       console.error("Erro ao consultar oráculo:", error);
       alert("Erro ao consultar. Tente novamente.");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
-  const handleNewConsult = () => {
-    setSubmitted(false);
-    setResult(null);
-    setQuestion("");
-    setOracleType(null);
-    setExpandedInfo(null);
+  const handlePayment = async () => {
+    if (!oracleId) return;
+
+    setIsProcessing(true);
+    try {
+      const result = await createPaymentPreference.mutateAsync({
+        consultationType: "oracle",
+        amount: parseFloat(prices[numberOfSymbols]),
+        description: `Oráculo de ${oracleNames[oracleType!]} - ${numberOfSymbols} símbolo(s)`,
+        consultationId: oracleId,
+      });
+
+      if (result.initPoint) {
+        // Store info for callback
+        localStorage.setItem("currentConsultationId", oracleId);
+        localStorage.setItem("currentConsultationType", "oracle");
+        localStorage.setItem("pendingPaymentId", result.paymentId);
+        
+        // Redirect to Mercado Pago
+        window.location.href = result.initPoint;
+      }
+    } catch (error) {
+      console.error("Erro ao processar pagamento:", error);
+      alert("Erro ao processar pagamento. Tente novamente.");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  if (submitted && result) {
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-purple-950 via-indigo-950 to-purple-900 flex items-center justify-center">
+        <Card className="bg-purple-900/30 border-purple-400/30 p-8 text-center">
+          <p className="text-purple-200 mb-4">Você precisa estar autenticado para acessar este serviço.</p>
+          <a href={getLoginUrl()}>
+            <Button className="bg-gradient-to-r from-yellow-600 to-orange-600">Fazer Login</Button>
+          </a>
+        </Card>
+      </div>
+    );
+  }
+
+  // Form Stage
+  if (stage === "form") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-950 via-indigo-900 to-black text-white">
+        {/* Header */}
+        <header className="border-b border-purple-700/30 bg-black/40 backdrop-blur-md sticky top-0 z-40">
+          <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
+            <Link href="/">
+              <Button variant="ghost" size="sm" className="text-purple-300 hover:bg-purple-900/30">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Voltar
+              </Button>
+            </Link>
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-6 h-6 text-cyan-400" />
+              <h1 className="text-2xl font-bold">Oráculos Místicos</h1>
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-4xl mx-auto px-4 py-12">
+          <div className="space-y-8">
+            {/* Info Section */}
+            <Card className="bg-gradient-to-br from-purple-900/40 to-indigo-900/40 border-purple-400/50 p-8">
+              <h2 className="text-2xl font-bold mb-6 text-purple-300">Escolha seu Oráculo</h2>
+              <p className="text-purple-200 mb-8">
+                Os oráculos são ferramentas ancestrais de sabedoria que conectam você com mensagens do universo. Escolha o tipo que mais ressoa com você:
+              </p>
+
+              <div className="space-y-4">
+                {Object.entries(oracleDescriptions).map(([key, oracle]) => (
+                  <div key={key}>
+                    <button
+                      onClick={() => {
+                        setOracleType(key as "runas" | "anjos" | "buzios");
+                        setExpandedInfo(expandedInfo === key ? null : key);
+                      }}
+                      className={`w-full text-left p-4 rounded-lg border-2 transition ${
+                        oracleType === key
+                          ? "border-cyan-400 bg-cyan-900/40"
+                          : "border-purple-400/30 bg-purple-900/20 hover:bg-purple-900/40"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-bold text-cyan-300">{oracle.title}</h3>
+                        <ChevronDown
+                          className={`w-5 h-5 transition ${
+                            expandedInfo === key ? "rotate-180" : ""
+                          }`}
+                        />
+                      </div>
+                    </button>
+
+                    {expandedInfo === key && (
+                      <div className="bg-purple-900/20 border border-purple-400/30 border-t-0 p-4 rounded-b-lg">
+                        <p className="text-purple-200 mb-4">{oracle.description}</p>
+                        <div className="space-y-2">
+                          <p className="text-sm font-semibold text-purple-300">Benefícios:</p>
+                          <ul className="space-y-1">
+                            {oracle.benefits.map((benefit, i) => (
+                              <li key={i} className="text-sm text-purple-200 flex items-center gap-2">
+                                <span className="text-cyan-400">✓</span>
+                                {benefit}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            {/* Form Card */}
+            {oracleType && (
+              <Card className="bg-gradient-to-br from-cyan-900/40 to-blue-900/40 border-cyan-400/50 p-8">
+                <h3 className="text-xl font-bold text-cyan-300 mb-6">Sua Consulta</h3>
+
+                {/* Question */}
+                <div className="mb-6">
+                  <label className="block text-sm font-semibold text-cyan-300 mb-2">
+                    Sua Pergunta
+                  </label>
+                  <Textarea
+                    value={question}
+                    onChange={(e) => setQuestion(e.target.value)}
+                    placeholder="Formule sua pergunta com clareza..."
+                    className="bg-cyan-800/30 border-cyan-400/30 text-cyan-100 placeholder:text-cyan-400"
+                    rows={4}
+                  />
+                </div>
+
+                {/* Number of Symbols */}
+                <div className="mb-6">
+                  <label className="block text-sm font-semibold text-cyan-300 mb-3">
+                    Quantos símbolos? ({numberOfSymbols})
+                  </label>
+                  <div className="flex gap-2">
+                    {[1, 3, 5].map((num) => (
+                      <button
+                        key={num}
+                        onClick={() => setNumberOfSymbols(num)}
+                        className={`flex-1 py-2 rounded font-bold transition ${
+                          numberOfSymbols === num
+                            ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white"
+                            : "bg-cyan-800/30 text-cyan-200 hover:bg-cyan-700/30"
+                        }`}
+                      >
+                        {num}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Price */}
+                <div className="bg-cyan-950/60 p-4 rounded-lg border border-cyan-500/20 mb-6">
+                  <p className="text-cyan-400 font-semibold text-sm mb-1">Valor da Consulta</p>
+                  <p className="text-3xl font-bold text-cyan-300">R$ {prices[numberOfSymbols]}</p>
+                </div>
+
+                {/* Submit Button */}
+                <Button
+                  onClick={handleSubmit}
+                  disabled={isProcessing || !question.trim()}
+                  className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-lg py-6"
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Processando...
+                    </>
+                  ) : (
+                    "Prosseguir para Pagamento"
+                  )}
+                </Button>
+              </Card>
+            )}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Payment Stage
+  if (stage === "payment" && result) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-950 via-indigo-900 to-black text-white">
+        {/* Header */}
+        <header className="border-b border-purple-700/30 bg-black/40 backdrop-blur-md sticky top-0 z-40">
+          <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
+            <button
+              onClick={() => setStage("form")}
+              className="text-purple-300 hover:text-purple-200"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+            </button>
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-6 h-6 text-cyan-400" />
+              <h1 className="text-2xl font-bold">Confirmar Pagamento</h1>
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-2xl mx-auto px-4 py-12">
+          <Card className="bg-gradient-to-br from-yellow-900/40 to-orange-900/40 border-yellow-400/50 p-8">
+            <h2 className="text-2xl font-bold text-yellow-300 mb-4">💳 Confirmar Consulta</h2>
+            <p className="text-yellow-100 mb-6">
+              Para receber a interpretação dos {oracleNames[oracleType!]}, realize o pagamento:
+            </p>
+
+            <div className="bg-yellow-950/60 p-6 rounded-lg border border-yellow-500/20 mb-6">
+              <p className="text-yellow-400 font-semibold text-sm mb-2">Valor da Consulta</p>
+              <p className="text-4xl font-bold text-yellow-300">R$ {prices[numberOfSymbols]}</p>
+              <p className="text-yellow-200 text-sm mt-2">{oracleNames[oracleType!]} - {numberOfSymbols} símbolo(s)</p>
+            </div>
+
+            <Button
+              onClick={handlePayment}
+              disabled={isProcessing}
+              className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold py-3 px-4 rounded-lg text-lg"
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Processando...
+                </>
+              ) : (
+                "Pagar com Mercado Pago"
+              )}
+            </Button>
+
+            <p className="text-yellow-200 text-xs mt-4 text-center">
+              Após confirmar o pagamento, você receberá a interpretação completa.
+            </p>
+
+            <Button
+              variant="ghost"
+              onClick={() => setStage("form")}
+              className="w-full mt-4 text-yellow-300 hover:text-yellow-200"
+            >
+              ← Voltar ao Formulário
+            </Button>
+          </Card>
+        </main>
+      </div>
+    );
+  }
+
+  // Response Stage
+  if (stage === "response" && result) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-950 via-indigo-900 to-black text-white">
         {/* Header */}
@@ -149,239 +417,27 @@ export default function Oracle() {
                 </div>
               </div>
 
-              {/* Payment Section */}
-              <Card className="bg-gradient-to-br from-cyan-900/40 to-blue-900/40 border-cyan-400/50 p-6 mb-6">
-                <h3 className="text-lg font-bold mb-3 text-cyan-300">💳 Confirmar Consulta</h3>
-                <p className="text-cyan-100 mb-4 text-sm">
-                  Para confirmar esta consulta e apoiar nosso trabalho espiritual:
-                </p>
-                <div className="text-2xl font-bold text-cyan-300 mb-4">R$ {result.price}</div>
-                <Button
-                  onClick={async () => {
-                    if (!consultationId) return;
-                    setIsProcessingPayment(true);
-                    try {
-                      const paymentResult = await createPaymentPreference.mutateAsync({
-                        consultationType: "oracle",
-                        amount: parseFloat(result.price),
-                        description: `Consulta ${oracleNames[oracleType!]} - ${numberOfSymbols} símbolo(s)`,
-                        consultationId,
-                      });
-                      if (paymentResult.initPoint) {
-                        localStorage.setItem("pendingPaymentId", paymentResult.paymentId);
-                        window.location.href = paymentResult.initPoint;
-                      }
-                    } catch (error) {
-                      console.error("Erro ao processar pagamento:", error);
-                      alert("Erro ao processar pagamento. Tente novamente.");
-                    } finally {
-                      setIsProcessingPayment(false);
-                    }
-                  }}
-                  disabled={isProcessingPayment}
-                  className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-bold py-2 px-4 rounded-lg"
-                >
-                  {isProcessingPayment ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Processando...
-                    </>
-                  ) : (
-                    "Pagar com Mercado Pago"
-                  )}
-                </Button>
-              </Card>
-
               <Button
-                onClick={handleNewConsult}
+                onClick={() => {
+                  setOracleType(null);
+                  setQuestion("");
+                  setNumberOfSymbols(1);
+                  setStage("form");
+                  setResult(null);
+                  setOracleId(null);
+                  window.history.replaceState({}, "", "/oracle");
+                }}
                 className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-lg py-6"
               >
-                Fazer Nova Consulta
+                Novo Oráculo
               </Button>
             </Card>
-
-            {/* Info */}
-            <div className="bg-cyan-900/20 border border-cyan-500/30 rounded-lg p-6">
-              <p className="text-cyan-200">
-                🔮 A mensagem do oráculo foi revelada. Medite sobre esta orientação e deixe que a sabedoria ancestral guie seus passos. Você pode fazer uma nova consulta sempre que desejar.
-              </p>
-            </div>
           </div>
         </main>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-950 via-indigo-900 to-black text-white">
-      {/* Header */}
-      <header className="border-b border-purple-700/30 bg-black/40 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
-          <Link href="/">
-            <Button variant="ghost" size="sm" className="text-purple-300 hover:bg-purple-900/30">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar
-            </Button>
-          </Link>
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-6 h-6 text-cyan-400" />
-            <h1 className="text-2xl font-bold">Oráculos Místicos</h1>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-4xl mx-auto px-4 py-12">
-        <div className="grid md:grid-cols-3 gap-8">
-          {/* Input Section */}
-          <div className="md:col-span-2 space-y-6">
-            {/* Oracle Type Selection with Descriptions */}
-            <Card className="bg-cyan-900/20 border-cyan-500/30 p-8">
-              <h2 className="text-2xl font-bold mb-6">Escolha seu Oráculo</h2>
-              <p className="text-cyan-200 text-sm mb-6">Clique em cada oráculo para conhecer como funciona</p>
-              <div className="space-y-3">
-                {(["runas", "anjos", "buzios"] as const).map((type) => {
-                  const info = oracleDescriptions[type];
-                  const isExpanded = expandedInfo === type;
-                  const isSelected = oracleType === type;
-
-                  return (
-                    <div key={type}>
-                      <button
-                        onClick={() => {
-                          setExpandedInfo(isExpanded ? null : type);
-                          if (!isExpanded) {
-                            setOracleType(type);
-                          }
-                        }}
-                        className={`w-full p-4 rounded-lg border-2 text-left transition-all flex items-center justify-between ${
-                          isSelected
-                            ? "border-cyan-400 bg-cyan-600/30"
-                            : "border-cyan-500/30 bg-cyan-900/20 hover:border-cyan-400/60"
-                        }`}
-                      >
-                        <div>
-                          <p className="font-bold text-lg">{info.title}</p>
-                          {isSelected && <p className="text-xs text-cyan-300 mt-1">✓ Selecionado</p>}
-                        </div>
-                        <ChevronDown
-                          className={`w-5 h-5 transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                        />
-                      </button>
-
-                      {/* Expandable Description */}
-                      {isExpanded && (
-                        <div className="mt-3 p-4 bg-cyan-950/40 border border-cyan-500/20 rounded-lg">
-                          <p className="text-cyan-100 mb-4">{info.description}</p>
-                          <div className="space-y-2">
-                            <p className="text-sm font-semibold text-cyan-300">Benefícios desta consulta:</p>
-                            <ul className="space-y-1">
-                              {info.benefits.map((benefit, idx) => (
-                                <li key={idx} className="text-sm text-cyan-200 flex items-start gap-2">
-                                  <span className="text-cyan-400 mt-0.5">✨</span>
-                                  <span>{benefit}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </Card>
-
-            {/* Question Input */}
-            {oracleType && (
-              <Card className="bg-cyan-900/20 border-cyan-500/30 p-8">
-                <h2 className="text-2xl font-bold mb-6">Sua Pergunta</h2>
-                <Textarea
-                  value={question}
-                  onChange={(e) => setQuestion(e.target.value)}
-                  placeholder="Formule sua pergunta com clareza e intenção..."
-                  className="bg-cyan-950/50 border-cyan-500/30 text-white placeholder-cyan-400/50 focus:border-cyan-400"
-                  rows={4}
-                />
-              </Card>
-            )}
-
-            {/* Number of Symbols */}
-            {oracleType && (
-              <Card className="bg-cyan-900/20 border-cyan-500/30 p-8">
-                <h2 className="text-2xl font-bold mb-6">Quantos Símbolos?</h2>
-                <div className="grid grid-cols-3 gap-4">
-                  {[1, 3, 5].map((num) => (
-                    <button
-                      key={num}
-                      onClick={() => setNumberOfSymbols(num)}
-                      className={`p-4 rounded-lg border-2 transition-all ${
-                        numberOfSymbols === num
-                          ? "border-cyan-400 bg-cyan-600/30"
-                          : "border-cyan-500/30 bg-cyan-900/20 hover:border-cyan-400/60"
-                      }`}
-                    >
-                      <div className="text-2xl font-bold mb-2">{num}</div>
-                      <div className="text-sm text-cyan-300">R$ {prices[num]}</div>
-                    </button>
-                  ))}
-                </div>
-              </Card>
-            )}
-
-            {/* Submit Button */}
-            {oracleType && (
-              <Button
-                onClick={handleSubmit}
-                disabled={createConsult.isPending || !question.trim()}
-                className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-lg py-6"
-              >
-                {createConsult.isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Consultando...
-                  </>
-                ) : (
-                  "Consultar Oráculo"
-                )}
-              </Button>
-            )}
-          </div>
-
-          {/* History Sidebar */}
-          <div>
-            <Card className="bg-cyan-900/20 border-cyan-500/30 p-6 sticky top-24">
-              <h3 className="text-lg font-bold mb-4">Histórico</h3>
-              {listConsults.data && listConsults.data.length > 0 ? (
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {listConsults.data.map((consult: any) => (
-                    <div
-                      key={consult.id}
-                      className="p-3 bg-cyan-950/50 rounded-lg border border-cyan-500/20 hover:border-cyan-400/50 transition-all cursor-pointer"
-                    >
-                      <p className="text-sm text-cyan-200 font-bold">{oracleNames[consult.oracleType]}</p>
-                      <p className="text-xs text-cyan-400 mt-2">
-                        {consult.createdAt ? new Date(consult.createdAt).toLocaleDateString("pt-BR") : ""}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-cyan-400">Nenhuma consulta realizada ainda.</p>
-              )}
-            </Card>
-          </div>
-        </div>
-
-        {/* Info */}
-        <div className="mt-8 bg-cyan-900/20 border border-cyan-500/30 rounded-lg p-6">
-          <p className="text-cyan-200">
-            🔮 Os oráculos ancestrais revelam mensagens do universo através de símbolos sagrados.
-            Escolha seu tipo de oráculo, conheça como funciona e formule sua pergunta com intenção clara para receber
-            a orientação que você precisa neste momento.
-          </p>
-        </div>
-      </main>
-    </div>
-  );
+  return null;
 }
 

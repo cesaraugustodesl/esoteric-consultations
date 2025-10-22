@@ -3,9 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Star, ArrowLeft, Loader2, Download } from "lucide-react";
-import { Link } from "wouter";
-import { useState } from "react";
+import { Link, useLocation } from "wouter";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
+import { getLoginUrl } from "@/const";
 
 // Lista de principais cidades brasileiras com coordenadas
 const BRAZILIAN_CITIES = [
@@ -37,25 +38,36 @@ const BRAZILIAN_CITIES = [
 ];
 
 export default function Astral() {
-  const { user } = useAuth();
+  const { isAuthenticated } = useAuth();
+  const [, setLocation] = useLocation();
   const [name, setName] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [birthTime, setBirthTime] = useState("");
   const [birthLocation, setBirthLocation] = useState("");
   const [filteredCities, setFilteredCities] = useState<typeof BRAZILIAN_CITIES>([]);
   const [showCities, setShowCities] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [stage, setStage] = useState<"form" | "payment" | "response">("form");
   const [mapContent, setMapContent] = useState<string | null>(null);
   const [mapId, setMapId] = useState<string | null>(null);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const createMap = trpc.astral.createMap.useMutation();
   const generatePDF = trpc.astral.generatePDF.useMutation();
-  const listMaps = trpc.astral.listMaps.useQuery();
   const createPaymentPreference = trpc.payment.createPreference.useMutation();
 
   const price = "40.00";
+
+  // Check if returning from payment
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const paid = params.get("paid");
+    const mapIdParam = params.get("map");
+
+    if (paid === "true" && mapIdParam) {
+      setMapId(mapIdParam);
+      setStage("response");
+    }
+  }, []);
 
   const handleLocationChange = (value: string) => {
     setBirthLocation(value);
@@ -75,11 +87,78 @@ export default function Astral() {
     setShowCities(false);
   };
 
+  const handleSubmit = async () => {
+    if (!name.trim()) {
+      alert("Por favor, insira seu nome");
+      return;
+    }
+    if (!birthDate) {
+      alert("Por favor, insira sua data de nascimento");
+      return;
+    }
+    if (!birthTime) {
+      alert("Por favor, insira sua hora de nascimento");
+      return;
+    }
+    if (!birthLocation.trim()) {
+      alert("Por favor, selecione sua cidade de nascimento");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const result = await createMap.mutateAsync({
+        birthDate,
+        birthTime,
+        birthLocation,
+        packageType: "premium",
+      });
+
+      setMapId(result.mapId);
+      setMapContent(result.mapContent);
+      setStage("payment");
+    } catch (error) {
+      console.error("Erro ao criar mapa:", error);
+      alert("Erro ao criar mapa. Tente novamente.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handlePayment = async () => {
+    if (!mapId) return;
+
+    setIsProcessing(true);
+    try {
+      const result = await createPaymentPreference.mutateAsync({
+        consultationType: "astral",
+        amount: parseFloat(price),
+        description: "Mapa Astral + Previsões",
+        consultationId: mapId,
+      });
+
+      if (result.initPoint) {
+        // Store info for callback
+        localStorage.setItem("currentConsultationId", mapId);
+        localStorage.setItem("currentConsultationType", "astral");
+        localStorage.setItem("pendingPaymentId", result.paymentId);
+        
+        // Redirect to Mercado Pago
+        window.location.href = result.initPoint;
+      }
+    } catch (error) {
+      console.error("Erro ao processar pagamento:", error);
+      alert("Erro ao processar pagamento. Tente novamente.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const downloadPDF = async () => {
     if (!mapContent || !name) return;
     
     try {
-      setIsDownloading(true);
+      setIsProcessing(true);
       
       const result = await generatePDF.mutateAsync({
         name,
@@ -97,314 +176,314 @@ export default function Astral() {
         for (let i = 0; i < binaryString.length; i++) {
           bytes[i] = binaryString.charCodeAt(i);
         }
-        const blob = new Blob([bytes], { type: 'application/pdf' });
 
-        // Criar link e fazer download
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `Mapa-Astral-${name.replace(/\s+/g, '-')}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        const blob = new Blob([bytes], { type: "application/pdf" });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `Mapa_Astral_${name.replace(/\s+/g, "_")}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
       }
     } catch (error) {
-      console.error('Erro ao baixar PDF:', error);
-      alert('Erro ao fazer download do PDF. Tente novamente.');
+      console.error("Erro ao baixar PDF:", error);
+      alert("Erro ao baixar PDF. Tente novamente.");
     } finally {
-      setIsDownloading(false);
+      setIsProcessing(false);
     }
   };
 
-  const handleSubmit = async () => {
-    if (!name.trim()) {
-      alert("Por favor, digite seu nome");
-      return;
-    }
-    if (!birthDate || !birthTime || !birthLocation) {
-      alert("Por favor, preencha todos os dados de nascimento");
-      return;
-    }
-
-    try {
-      const result = await createMap.mutateAsync({
-        birthDate,
-        birthTime,
-        birthLocation,
-        packageType: "premium",
-      });
-      setMapContent(result.mapContent);
-      setMapId(result.mapId);
-      setSubmitted(true);
-    } catch (error) {
-      console.error("Erro ao criar mapa astral:", error);
-      alert("Erro ao criar mapa. Tente novamente.");
-    }
-  };
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-purple-950 via-indigo-950 to-purple-900 flex items-center justify-center">
+        <Card className="bg-purple-900/30 border-purple-400/30 p-8 text-center">
+          <p className="text-purple-200 mb-4">Você precisa estar autenticado para acessar este serviço.</p>
+          <a href={getLoginUrl()}>
+            <Button className="bg-gradient-to-r from-yellow-600 to-orange-600">Fazer Login</Button>
+          </a>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-yellow-950 via-orange-900 to-black text-white">
-      {/* Header */}
-      <header className="border-b border-yellow-700/30 bg-black/40 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center gap-4">
+    <div className="min-h-screen bg-gradient-to-b from-purple-950 via-indigo-950 to-purple-900">
+      <main className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-8">
           <Link href="/">
-            <Button variant="ghost" size="sm" className="text-yellow-300 hover:bg-yellow-900/30">
+            <Button variant="ghost" size="sm" className="text-yellow-400 hover:text-yellow-300">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Voltar
             </Button>
           </Link>
-          <div className="flex items-center gap-2">
-            <Star className="w-6 h-6 text-yellow-400" />
-            <h1 className="text-2xl font-bold">Mapa Astral + Previsões</h1>
-          </div>
+          <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400 flex items-center gap-2">
+            <Star className="w-8 h-8" />
+            Mapa Astral + Previsões
+          </h1>
         </div>
-      </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-12">
-        <div className="grid md:grid-cols-3 gap-8">
-          {/* Input Section */}
-          <div className="md:col-span-2 space-y-6">
-            {!submitted ? (
-              <>
+        {/* Form Stage */}
+        {stage === "form" && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Info Section */}
+            <div className="lg:col-span-2 space-y-6">
+              <Card className="bg-purple-900/30 border-purple-400/30 p-6">
+                <h3 className="text-xl font-bold text-yellow-300 mb-4">O que é um Mapa Astral?</h3>
+                <p className="text-purple-200 mb-4">
+                  Um mapa astral é um retrato do céu no momento exato do seu nascimento. Ele revela sua essência espiritual, potenciais e desafios.
+                </p>
+                <div className="space-y-3">
+                  <div className="flex gap-3">
+                    <div className="text-2xl">🌟</div>
+                    <div>
+                      <h4 className="font-bold text-yellow-300">Signo Solar</h4>
+                      <p className="text-sm text-purple-200">Sua personalidade e essência</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="text-2xl">🌙</div>
+                    <div>
+                      <h4 className="font-bold text-yellow-300">Signo Lunar</h4>
+                      <p className="text-sm text-purple-200">Suas emoções e mundo interior</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="text-2xl">🔮</div>
+                    <div>
+                      <h4 className="font-bold text-yellow-300">Ascendente</h4>
+                      <p className="text-sm text-purple-200">Como você é visto pelos outros</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="text-2xl">✨</div>
+                    <div>
+                      <h4 className="font-bold text-yellow-300">Previsões</h4>
+                      <p className="text-sm text-purple-200">Ciclos planetários para seu futuro</p>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
+              <Card className="bg-purple-900/30 border-purple-400/30 p-6">
+                <h3 className="text-xl font-bold text-yellow-300 mb-4">Pacote Premium</h3>
+                <p className="text-purple-200 mb-4">
+                  Análise completa com 10+ páginas incluindo:
+                </p>
+                <ul className="space-y-2 text-purple-200 text-sm">
+                  <li>✓ Análise de todos os 10 planetas</li>
+                  <li>✓ Interpretação das 12 casas astrológicas</li>
+                  <li>✓ Aspectos planetários e influências</li>
+                  <li>✓ Previsões para o próximo ano</li>
+                  <li>✓ Orientações espirituais práticas</li>
+                  <li>✓ PDF para download e arquivo pessoal</li>
+                </ul>
+              </Card>
+            </div>
+
+            {/* Form Section */}
+            <div className="space-y-6">
+              <Card className="bg-purple-900/30 border-purple-400/30 p-6">
+                <h3 className="text-xl font-bold text-yellow-300 mb-4">Seus Dados</h3>
+
                 {/* Name */}
-                <Card className="bg-yellow-900/20 border-yellow-500/30 p-8">
-                  <h2 className="text-2xl font-bold mb-6">Seus Dados Pessoais</h2>
-                  <div>
-                    <label className="block text-sm text-yellow-300 mb-2">Seu Nome</label>
+                <div className="mb-4">
+                  <label className="block text-sm font-semibold text-yellow-300 mb-2">
+                    Nome Completo
+                  </label>
+                  <Input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Seu nome..."
+                    className="bg-purple-800/30 border-purple-400/30 text-purple-100 placeholder:text-purple-400"
+                  />
+                </div>
+
+                {/* Birth Date */}
+                <div className="mb-4">
+                  <label className="block text-sm font-semibold text-yellow-300 mb-2">
+                    Data de Nascimento
+                  </label>
+                  <Input
+                    type="date"
+                    value={birthDate}
+                    onChange={(e) => setBirthDate(e.target.value)}
+                    className="bg-purple-800/30 border-purple-400/30 text-purple-100"
+                  />
+                </div>
+
+                {/* Birth Time */}
+                <div className="mb-4">
+                  <label className="block text-sm font-semibold text-yellow-300 mb-2">
+                    Hora de Nascimento
+                  </label>
+                  <Input
+                    type="time"
+                    value={birthTime}
+                    onChange={(e) => setBirthTime(e.target.value)}
+                    className="bg-purple-800/30 border-purple-400/30 text-purple-100"
+                  />
+                </div>
+
+                {/* Birth Location */}
+                <div className="mb-6">
+                  <label className="block text-sm font-semibold text-yellow-300 mb-2">
+                    Cidade de Nascimento
+                  </label>
+                  <div className="relative">
                     <Input
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Digite seu nome completo"
-                      className="bg-yellow-950/50 border-yellow-500/30 text-white placeholder-yellow-400/50"
+                      value={birthLocation}
+                      onChange={(e) => handleLocationChange(e.target.value)}
+                      onFocus={() => birthLocation && setShowCities(true)}
+                      placeholder="Digite sua cidade..."
+                      className="bg-purple-800/30 border-purple-400/30 text-purple-100 placeholder:text-purple-400"
                     />
-                    <p className="text-xs text-yellow-400 mt-2">
-                      Seu nome será usado para personalizar o mapa astral
-                    </p>
+                    {showCities && filteredCities.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 bg-purple-800 border border-purple-400/30 rounded mt-1 max-h-48 overflow-y-auto z-10">
+                        {filteredCities.map((city) => (
+                          <button
+                            key={city.name}
+                            onClick={() => selectCity(city)}
+                            className="w-full text-left px-4 py-2 hover:bg-purple-700 text-purple-100 text-sm"
+                          >
+                            {city.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                </Card>
+                </div>
 
-                {/* Birth Data */}
-                <Card className="bg-yellow-900/20 border-yellow-500/30 p-8">
-                  <h2 className="text-2xl font-bold mb-6">Dados de Nascimento</h2>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm text-yellow-300 mb-2">Data de Nascimento</label>
-                      <Input
-                        type="date"
-                        value={birthDate}
-                        onChange={(e) => setBirthDate(e.target.value)}
-                        className="bg-yellow-950/50 border-yellow-500/30 text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-yellow-300 mb-2">Hora de Nascimento</label>
-                      <Input
-                        type="time"
-                        value={birthTime}
-                        onChange={(e) => setBirthTime(e.target.value)}
-                        className="bg-yellow-950/50 border-yellow-500/30 text-white"
-                      />
-                      <p className="text-xs text-yellow-400 mt-2">
-                        Se não souber a hora exata, use 12:00 (meio-dia)
-                      </p>
-                    </div>
-                    <div className="relative">
-                      <label className="block text-sm text-yellow-300 mb-2">Local de Nascimento</label>
-                      <Input
-                        type="text"
-                        value={birthLocation}
-                        onChange={(e) => handleLocationChange(e.target.value)}
-                        onFocus={() => birthLocation.length > 0 && setShowCities(true)}
-                        placeholder="Digite sua cidade..."
-                        className="bg-yellow-950/50 border-yellow-500/30 text-white placeholder-yellow-400/50"
-                      />
-                      {showCities && filteredCities.length > 0 && (
-                        <div className="absolute top-full left-0 right-0 mt-1 bg-yellow-950 border border-yellow-500/50 rounded-lg z-50 max-h-48 overflow-y-auto">
-                          {filteredCities.map((city) => (
-                            <button
-                              key={city.name}
-                              onClick={() => selectCity(city)}
-                              className="w-full text-left px-4 py-2 hover:bg-yellow-900/50 text-yellow-200 text-sm border-b border-yellow-500/20 last:border-b-0"
-                            >
-                              {city.name}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </Card>
-
-                {/* Info Card */}
-                <Card className="bg-yellow-900/20 border-yellow-500/30 p-8">
-                  <h2 className="text-2xl font-bold mb-4 text-yellow-300">Mapa Astral + Previsões</h2>
-                  <p className="text-yellow-200 mb-4">
-                    Análise completa e profunda do seu mapa astral com previsões para o próximo ano.
-                  </p>
-                  <ul className="space-y-2 text-sm text-yellow-300 mb-6">
-                    <li>✨ 7 páginas de análise astrológica completa</li>
-                    <li>✨ 3 páginas de previsões e orientações</li>
-                    <li>✨ Análise de todos os planetas</li>
-                    <li>✨ Interpretação das 12 casas astrológicas</li>
-                    <li>✨ Previsões para o próximo ano</li>
-                    <li>✨ Conselhos para harmonizar suas energias</li>
-                  </ul>
-                  <p className="text-2xl font-bold text-yellow-400">R$ {price}</p>
-                </Card>
+                {/* Price */}
+                <div className="bg-yellow-950/60 p-4 rounded-lg border border-yellow-500/20 mb-6">
+                  <p className="text-yellow-400 font-semibold text-sm mb-1">Valor da Consulta</p>
+                  <p className="text-3xl font-bold text-yellow-300">R$ {price}</p>
+                </div>
 
                 {/* Submit Button */}
                 <Button
                   onClick={handleSubmit}
-                  disabled={createMap.isPending}
-                  className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-lg py-6"
+                  disabled={isProcessing}
+                  className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-lg py-6"
                 >
-                  {createMap.isPending ? (
+                  {isProcessing ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Gerando Mapa Astral...
+                      Processando...
                     </>
                   ) : (
-                    `Gerar Mapa - R$ ${price}`
+                    "Prosseguir para Pagamento"
                   )}
                 </Button>
-              </>
-            ) : (
-              <>
-                {/* Result */}
-                <Card className="bg-yellow-900/30 border-yellow-400/50 p-8">
-                  <h2 className="text-2xl font-bold mb-4 text-yellow-300">Seu Mapa Astral + Previsões</h2>
-                  <p className="text-yellow-200 mb-4">
-                    <strong>{name}</strong>, seu mapa astral foi gerado com sucesso!
-                  </p>
-                  <p className="text-sm text-yellow-300 mb-6">
-                    Este mapa está salvo em sua conta e você pode acessá-lo a qualquer momento.
-                  </p>
-                  {mapContent && (
-                    <div className="bg-yellow-950/50 border border-yellow-500/30 rounded-lg p-6 max-h-96 overflow-y-auto mb-6">
-                      <p className="text-yellow-100 leading-relaxed whitespace-pre-wrap text-sm">{mapContent}</p>
-                    </div>
-                  )}
-                  {/* Payment Section */}
-                  <Card className="bg-gradient-to-br from-yellow-900/40 to-orange-900/40 border-yellow-400/50 p-6 mb-6">
-                    <h3 className="text-lg font-bold mb-3 text-yellow-300">💳 Confirmar Consulta</h3>
-                    <p className="text-yellow-100 mb-4 text-sm">
-                      Para confirmar este mapa astral e apoiar nosso trabalho espiritual:
-                    </p>
-                    <div className="text-2xl font-bold text-yellow-300 mb-4">R$ {price}</div>
-                    <Button
-                      onClick={async () => {
-                        if (!mapId) return;
-                        setIsProcessingPayment(true);
-                        try {
-                          const result = await createPaymentPreference.mutateAsync({
-                            consultationType: "astral",
-                            amount: parseFloat(price),
-                            description: "Mapa Astral + Previsões",
-                            consultationId: mapId,
-                          });
-                          if (result.initPoint) {
-                            localStorage.setItem("pendingPaymentId", result.paymentId);
-                            window.location.href = result.initPoint;
-                          }
-                        } catch (error) {
-                          console.error("Erro ao processar pagamento:", error);
-                          alert("Erro ao processar pagamento. Tente novamente.");
-                        } finally {
-                          setIsProcessingPayment(false);
-                        }
-                      }}
-                      disabled={isProcessingPayment}
-                      className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold py-2 px-4 rounded-lg"
-                    >
-                      {isProcessingPayment ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Processando...
-                        </>
-                      ) : (
-                        "Pagar com Mercado Pago"
-                      )}
-                    </Button>
-                  </Card>
-
-                  <div className="space-y-3">
-                    <Button
-                      onClick={downloadPDF}
-                      disabled={isDownloading || generatePDF.isPending}
-                      className="w-full bg-yellow-600 hover:bg-yellow-700 text-lg py-6"
-                    >
-                      {isDownloading || generatePDF.isPending ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Gerando PDF...
-                        </>
-                      ) : (
-                        <>
-                          <Download className="w-4 h-4 mr-2" />
-                          Baixar Mapa Astral em PDF
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        setSubmitted(false);
-                        setMapContent(null);
-                        setMapId(null);
-                      }}
-                      className="w-full bg-yellow-700 hover:bg-yellow-800"
-                    >
-                      Gerar Novo Mapa
-                    </Button>
-                  </div>
-                </Card>
-              </>
-            )}
+              </Card>
+            </div>
           </div>
+        )}
 
-          {/* Sidebar - Info */}
-          <div className="space-y-6">
-            <Card className="bg-yellow-900/20 border-yellow-500/30 p-6">
-              <h3 className="text-lg font-bold mb-4 text-yellow-300">Como Funciona</h3>
-              <ul className="space-y-3 text-sm text-yellow-200">
-                <li className="flex gap-3">
-                  <span className="text-yellow-400">1.</span>
-                  <span>Preencha seus dados de nascimento com precisão</span>
-                </li>
-                <li className="flex gap-3">
-                  <span className="text-yellow-400">2.</span>
-                  <span>Receba seu mapa astral completo e detalhado</span>
-                </li>
-                <li className="flex gap-3">
-                  <span className="text-yellow-400">3.</span>
-                  <span>Baixe em PDF para guardar e consultar sempre</span>
-                </li>
-                <li className="flex gap-3">
-                  <span className="text-yellow-400">4.</span>
-                  <span>Acesse quando quiser em sua conta</span>
-                </li>
-              </ul>
+        {/* Payment Stage */}
+        {stage === "payment" && (
+          <div className="max-w-2xl mx-auto space-y-6">
+            <Card className="bg-gradient-to-br from-yellow-900/40 to-orange-900/40 border-yellow-400/50 p-8">
+              <h2 className="text-2xl font-bold text-yellow-300 mb-4">💳 Confirmar Mapa Astral</h2>
+              <p className="text-yellow-100 mb-6">
+                Finalize o pagamento para receber seu mapa astral completo com previsões personalizadas:
+              </p>
+
+              <div className="bg-yellow-950/60 p-6 rounded-lg border border-yellow-500/20 mb-6">
+                <p className="text-yellow-400 font-semibold text-sm mb-2">Valor da Consulta</p>
+                <p className="text-4xl font-bold text-yellow-300">R$ {price}</p>
+                <p className="text-yellow-200 text-sm mt-2">Mapa Astral + Previsões (10+ páginas)</p>
+              </div>
+
+              <Button
+                onClick={handlePayment}
+                disabled={isProcessing}
+                className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold py-3 px-4 rounded-lg text-lg"
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processando...
+                  </>
+                ) : (
+                  "Pagar com Mercado Pago"
+                )}
+              </Button>
+
+              <p className="text-yellow-200 text-xs mt-4 text-center">
+                Após confirmar o pagamento, você receberá seu mapa astral em PDF.
+              </p>
+
+              <Button
+                variant="ghost"
+                onClick={() => setStage("form")}
+                className="w-full mt-4 text-yellow-300 hover:text-yellow-200"
+              >
+                ← Voltar ao Formulário
+              </Button>
             </Card>
+          </div>
+        )}
 
-            <Card className="bg-yellow-900/20 border-yellow-500/30 p-6">
-              <h3 className="text-lg font-bold mb-4 text-yellow-300">Seus Mapas</h3>
-              {listMaps.data && listMaps.data.length > 0 ? (
-                <div className="space-y-2">
-                  {listMaps.data.map((map) => (
-                    <div key={map.id} className="bg-yellow-950/50 p-3 rounded border border-yellow-500/20">
-                      <p className="text-sm text-yellow-300">{map.birthDate}</p>
-                      <p className="text-xs text-yellow-400">Mapa Astral + Previsões</p>
-                    </div>
-                  ))}
+        {/* Response Stage */}
+        {stage === "response" && mapContent && (
+          <div className="max-w-3xl mx-auto space-y-6">
+            <Card className="bg-gradient-to-r from-yellow-900/40 to-orange-900/40 border-yellow-400/50 p-8">
+              <h2 className="text-2xl font-bold text-yellow-300 mb-4 flex items-center gap-2">
+                <Star className="w-6 h-6" />
+                Seu Mapa Astral
+              </h2>
+              <p className="text-yellow-100 mb-6">
+                Aqui está sua análise astrológica completa. Você pode fazer download do PDF para guardar.
+              </p>
+
+              <Button
+                onClick={downloadPDF}
+                disabled={isProcessing}
+                className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-lg py-6 mb-6"
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Gerando PDF...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-5 h-5 mr-2" />
+                    Baixar PDF
+                  </>
+                )}
+              </Button>
+
+              <div className="bg-purple-900/30 border border-purple-400/30 p-6 rounded-lg max-h-96 overflow-y-auto">
+                <div className="text-purple-100 whitespace-pre-wrap text-sm leading-relaxed">
+                  {mapContent}
                 </div>
-              ) : (
-                <p className="text-sm text-yellow-400">Nenhum mapa gerado ainda</p>
-              )}
+              </div>
             </Card>
+
+            {/* New Consultation Button */}
+            <Button
+              onClick={() => {
+                setName("");
+                setBirthDate("");
+                setBirthTime("");
+                setBirthLocation("");
+                setMapContent(null);
+                setMapId(null);
+                setStage("form");
+                window.history.replaceState({}, "", "/astral");
+              }}
+              className="w-full bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 text-lg py-6"
+            >
+              Novo Mapa Astral
+            </Button>
           </div>
-        </div>
+        )}
       </main>
     </div>
   );
 }
+

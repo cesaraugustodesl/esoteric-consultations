@@ -12,6 +12,7 @@ import Astral from "./pages/Astral";
 import Oracle from "./pages/Oracle";
 import Numerology from "./pages/Numerology";
 import Energy from "./pages/Energy";
+import PaymentCallback from "./pages/PaymentCallback";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -25,6 +26,7 @@ function Router() {
       <Route path="/oracle" component={Oracle} />
       <Route path="/numerology" component={Numerology} />
       <Route path="/energy" component={Energy} />
+      <Route path="/payment/success" component={PaymentCallback} />
       <Route path="/404" component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

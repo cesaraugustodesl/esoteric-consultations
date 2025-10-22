@@ -3,23 +3,37 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Sparkles, ArrowLeft, Loader2 } from "lucide-react";
-import { Link } from "wouter";
-import { useState } from "react";
+import { Link, useLocation } from "wouter";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
+import { getLoginUrl } from "@/const";
 
 export default function Numerology() {
-  const { user } = useAuth();
+  const { isAuthenticated } = useAuth();
+  const [, setLocation] = useLocation();
   const [fullName, setFullName] = useState("");
   const [birthDate, setBirthDate] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [stage, setStage] = useState<"form" | "payment" | "response">("form");
   const [result, setResult] = useState<any>(null);
-
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [readingId, setReadingId] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const createReading = trpc.numerology.createReading.useMutation();
-  const listReadings = trpc.numerology.listReadings.useQuery();
   const createPaymentPreference = trpc.payment.createPreference.useMutation();
+
+  const price = "25.00";
+
+  // Check if returning from payment
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const paid = params.get("paid");
+    const readingIdParam = params.get("reading");
+
+    if (paid === "true" && readingIdParam) {
+      setReadingId(readingIdParam);
+      setStage("response");
+    }
+  }, []);
 
   const handleSubmit = async () => {
     if (!fullName.trim()) {
@@ -44,6 +58,7 @@ export default function Numerology() {
       }
     }
 
+    setIsProcessing(true);
     try {
       const response = await createReading.mutateAsync({
         fullName,
@@ -51,41 +66,249 @@ export default function Numerology() {
       });
       setReadingId(response.numerologyId);
       setResult(response);
-      setSubmitted(true);
-      listReadings.refetch();
+      setStage("payment");
     } catch (error) {
       console.error("Erro ao gerar leitura numerológica:", error);
       alert("Erro ao gerar leitura. Tente novamente.");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
-  const handleNewReading = () => {
-    setFullName("");
-    setBirthDate("");
-    setSubmitted(false);
-    setResult(null);
+  const handlePayment = async () => {
+    if (!readingId) return;
+
+    setIsProcessing(true);
+    try {
+      const result = await createPaymentPreference.mutateAsync({
+        consultationType: "numerology",
+        amount: parseFloat(price),
+        description: "Leitura Numerológica Completa",
+        consultationId: readingId,
+      });
+
+      if (result.initPoint) {
+        // Store info for callback
+        localStorage.setItem("currentConsultationId", readingId);
+        localStorage.setItem("currentConsultationType", "numerology");
+        localStorage.setItem("pendingPaymentId", result.paymentId);
+        
+        // Redirect to Mercado Pago
+        window.location.href = result.initPoint;
+      }
+    } catch (error) {
+      console.error("Erro ao processar pagamento:", error);
+      alert("Erro ao processar pagamento. Tente novamente.");
+    } finally {
+      setIsProcessing(false);
+    }
   };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-purple-950 via-indigo-950 to-purple-900 flex items-center justify-center">
+        <Card className="bg-purple-900/30 border-purple-400/30 p-8 text-center">
+          <p className="text-purple-200 mb-4">Você precisa estar autenticado para acessar este serviço.</p>
+          <a href={getLoginUrl()}>
+            <Button className="bg-gradient-to-r from-yellow-600 to-orange-600">Fazer Login</Button>
+          </a>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-950 via-indigo-950 to-purple-900">
       <main className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <Link href="/">
-              <Button variant="ghost" size="sm" className="text-yellow-400 hover:text-yellow-300">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Voltar
-              </Button>
-            </Link>
-            <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400 flex items-center gap-2">
-              <Sparkles className="w-8 h-8" />
-              Numerologia
-            </h1>
-          </div>
+        <div className="flex items-center gap-3 mb-8">
+          <Link href="/">
+            <Button variant="ghost" size="sm" className="text-yellow-400 hover:text-yellow-300">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Voltar
+            </Button>
+          </Link>
+          <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400 flex items-center gap-2">
+            <Sparkles className="w-8 h-8" />
+            Numerologia
+          </h1>
         </div>
 
-        {submitted && result ? (
+        {/* Form Stage */}
+        {stage === "form" && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Info Section */}
+            <div className="lg:col-span-2 space-y-6">
+              <Card className="bg-purple-900/30 border-purple-400/30 p-6">
+                <h3 className="text-xl font-bold text-yellow-300 mb-4">O que é Numerologia?</h3>
+                <p className="text-purple-200 mb-4">
+                  A Numerologia é uma ciência ancestral que estuda o significado dos números e sua influência na vida. Cada número carrega uma vibração energética única que revela aspectos profundos da sua personalidade, destino e propósito de vida.
+                </p>
+                <div className="space-y-3">
+                  <div className="flex gap-3">
+                    <div className="text-2xl">🔢</div>
+                    <div>
+                      <h4 className="font-bold text-yellow-300">Número de Destino</h4>
+                      <p className="text-sm text-purple-200">Seu propósito de vida e missão</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="text-2xl">💫</div>
+                    <div>
+                      <h4 className="font-bold text-yellow-300">Número da Alma</h4>
+                      <p className="text-sm text-purple-200">Seus desejos e motivações profundas</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="text-2xl">✨</div>
+                    <div>
+                      <h4 className="font-bold text-yellow-300">Número da Personalidade</h4>
+                      <p className="text-sm text-purple-200">Como você é visto pelo mundo</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="text-2xl">🌟</div>
+                    <div>
+                      <h4 className="font-bold text-yellow-300">Número de Expressão</h4>
+                      <p className="text-sm text-purple-200">Seus talentos e habilidades</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="text-2xl">📅</div>
+                    <div>
+                      <h4 className="font-bold text-yellow-300">Ano Pessoal</h4>
+                      <p className="text-sm text-purple-200">Influências para o ano atual</p>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
+              <Card className="bg-purple-900/30 border-purple-400/30 p-6">
+                <h3 className="text-xl font-bold text-yellow-300 mb-4">Sua Leitura Inclui</h3>
+                <ul className="space-y-2 text-purple-200 text-sm">
+                  <li>✓ Cálculo de 5 números principais</li>
+                  <li>✓ Interpretação detalhada de cada número</li>
+                  <li>✓ Análise de compatibilidade</li>
+                  <li>✓ Orientações para o ano pessoal</li>
+                  <li>✓ Dicas práticas para harmonizar energias</li>
+                </ul>
+              </Card>
+            </div>
+
+            {/* Form Section */}
+            <div className="space-y-6">
+              <Card className="bg-purple-900/30 border-purple-400/30 p-6">
+                <h3 className="text-xl font-bold text-yellow-300 mb-4">Seus Dados</h3>
+
+                {/* Full Name */}
+                <div className="mb-4">
+                  <label className="block text-sm font-semibold text-yellow-300 mb-2">
+                    Nome Completo
+                  </label>
+                  <Input
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Seu nome completo..."
+                    className="bg-purple-800/30 border-purple-400/30 text-purple-100 placeholder:text-purple-400"
+                  />
+                </div>
+
+                {/* Birth Date */}
+                <div className="mb-6">
+                  <label className="block text-sm font-semibold text-yellow-300 mb-2">
+                    Data de Nascimento (DD/MM/YYYY)
+                  </label>
+                  <Input
+                    value={birthDate}
+                    onChange={(e) => {
+                      let value = e.target.value.replace(/\D/g, '');
+                      if (value.length > 2) {
+                        value = value.slice(0, 2) + '/' + value.slice(2);
+                      }
+                      if (value.length > 5) {
+                        value = value.slice(0, 5) + '/' + value.slice(5, 9);
+                      }
+                      setBirthDate(value);
+                    }}
+                    placeholder="DD/MM/YYYY"
+                    maxLength={10}
+                    className="bg-purple-800/30 border-purple-400/30 text-purple-100 placeholder:text-purple-400"
+                  />
+                </div>
+
+                {/* Price */}
+                <div className="bg-yellow-950/60 p-4 rounded-lg border border-yellow-500/20 mb-6">
+                  <p className="text-yellow-400 font-semibold text-sm mb-1">Valor da Leitura</p>
+                  <p className="text-3xl font-bold text-yellow-300">R$ {price}</p>
+                </div>
+
+                {/* Submit Button */}
+                <Button
+                  onClick={handleSubmit}
+                  disabled={isProcessing}
+                  className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-lg py-6"
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Processando...
+                    </>
+                  ) : (
+                    "Prosseguir para Pagamento"
+                  )}
+                </Button>
+              </Card>
+            </div>
+          </div>
+        )}
+
+        {/* Payment Stage */}
+        {stage === "payment" && result && (
+          <div className="max-w-2xl mx-auto space-y-6">
+            <Card className="bg-gradient-to-br from-yellow-900/40 to-orange-900/40 border-yellow-400/50 p-8">
+              <h2 className="text-2xl font-bold text-yellow-300 mb-4">💳 Confirmar Leitura</h2>
+              <p className="text-yellow-100 mb-6">
+                Finalize o pagamento para receber sua leitura numerológica completa:
+              </p>
+
+              <div className="bg-yellow-950/60 p-6 rounded-lg border border-yellow-500/20 mb-6">
+                <p className="text-yellow-400 font-semibold text-sm mb-2">Valor da Leitura</p>
+                <p className="text-4xl font-bold text-yellow-300">R$ {price}</p>
+                <p className="text-yellow-200 text-sm mt-2">Leitura Numerológica Completa (5 números)</p>
+              </div>
+
+              <Button
+                onClick={handlePayment}
+                disabled={isProcessing}
+                className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold py-3 px-4 rounded-lg text-lg"
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processando...
+                  </>
+                ) : (
+                  "Pagar com Mercado Pago"
+                )}
+              </Button>
+
+              <p className="text-yellow-200 text-xs mt-4 text-center">
+                Após confirmar o pagamento, você receberá sua leitura numerológica.
+              </p>
+
+              <Button
+                variant="ghost"
+                onClick={() => setStage("form")}
+                className="w-full mt-4 text-yellow-300 hover:text-yellow-200"
+              >
+                ← Voltar ao Formulário
+              </Button>
+            </Card>
+          </div>
+        )}
+
+        {/* Response Stage */}
+        {stage === "response" && result && (
           <div className="space-y-6">
             {/* Title */}
             <Card className="bg-gradient-to-r from-yellow-900/40 to-orange-900/40 border-yellow-400/50 p-6">
@@ -99,296 +322,57 @@ export default function Numerology() {
             {/* Numbers Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Destiny Number */}
-              <Card className="bg-gradient-to-br from-yellow-900/30 to-orange-900/30 border-yellow-400/30 p-6">
-                <div className="mb-4">
-                  <div className="text-5xl font-bold text-yellow-400 mb-2">{result.destinyNumber}</div>
-                  <h3 className="text-xl font-bold text-yellow-300">Número de Destino</h3>
-                  <p className="text-xs text-yellow-200 mt-1">Revela a missão de vida</p>
-                </div>
-                <p className="text-yellow-100 text-sm leading-relaxed">
-                  {result.destinyInterpretation}
-                </p>
+              <Card className="bg-purple-900/30 border-purple-400/30 p-6">
+                <h3 className="text-lg font-bold text-yellow-300 mb-3">🔢 Número de Destino</h3>
+                <p className="text-4xl font-bold text-pink-400 mb-4">{result.destinyNumber}</p>
+                <p className="text-purple-200 leading-relaxed">{result.destinyInterpretation}</p>
               </Card>
 
               {/* Soul Number */}
-              <Card className="bg-gradient-to-br from-pink-900/30 to-rose-900/30 border-pink-400/30 p-6">
-                <div className="mb-4">
-                  <div className="text-5xl font-bold text-pink-400 mb-2">{result.soulNumber}</div>
-                  <h3 className="text-xl font-bold text-pink-300">Número da Alma</h3>
-                  <p className="text-xs text-pink-200 mt-1">Desejos profundos e emoções ocultas</p>
-                </div>
-                <p className="text-pink-100 text-sm leading-relaxed">
-                  {result.soulInterpretation}
-                </p>
+              <Card className="bg-purple-900/30 border-purple-400/30 p-6">
+                <h3 className="text-lg font-bold text-yellow-300 mb-3">💫 Número da Alma</h3>
+                <p className="text-4xl font-bold text-pink-400 mb-4">{result.soulNumber}</p>
+                <p className="text-purple-200 leading-relaxed">{result.soulInterpretation}</p>
               </Card>
 
               {/* Personality Number */}
-              <Card className="bg-gradient-to-br from-purple-900/30 to-indigo-900/30 border-purple-400/30 p-6">
-                <div className="mb-4">
-                  <div className="text-5xl font-bold text-purple-400 mb-2">{result.personalityNumber}</div>
-                  <h3 className="text-xl font-bold text-purple-300">Número da Personalidade</h3>
-                  <p className="text-xs text-purple-200 mt-1">Como você é percebido pelos outros</p>
-                </div>
-                <p className="text-purple-100 text-sm leading-relaxed">
-                  {result.personalityInterpretation}
-                </p>
+              <Card className="bg-purple-900/30 border-purple-400/30 p-6">
+                <h3 className="text-lg font-bold text-yellow-300 mb-3">✨ Número da Personalidade</h3>
+                <p className="text-4xl font-bold text-pink-400 mb-4">{result.personalityNumber}</p>
+                <p className="text-purple-200 leading-relaxed">{result.personalityInterpretation}</p>
               </Card>
 
               {/* Expression Number */}
-              <Card className="bg-gradient-to-br from-cyan-900/30 to-blue-900/30 border-cyan-400/30 p-6">
-                <div className="mb-4">
-                  <div className="text-5xl font-bold text-cyan-400 mb-2">{result.expressionNumber}</div>
-                  <h3 className="text-xl font-bold text-cyan-300">Número de Expressão</h3>
-                  <p className="text-xs text-cyan-200 mt-1">Como você se expressa no mundo</p>
-                </div>
-                <p className="text-cyan-100 text-sm leading-relaxed">
-                  {result.expressionInterpretation}
-                </p>
+              <Card className="bg-purple-900/30 border-purple-400/30 p-6">
+                <h3 className="text-lg font-bold text-yellow-300 mb-3">🌟 Número de Expressão</h3>
+                <p className="text-4xl font-bold text-pink-400 mb-4">{result.expressionNumber}</p>
+                <p className="text-purple-200 leading-relaxed">{result.expressionInterpretation}</p>
               </Card>
 
               {/* Personal Year */}
-              <Card className="bg-gradient-to-br from-green-900/30 to-emerald-900/30 border-green-400/30 p-6 md:col-span-2">
-                <div className="mb-4">
-                  <div className="text-5xl font-bold text-green-400 mb-2">{result.personalYear}</div>
-                  <h3 className="text-xl font-bold text-green-300">Ano Pessoal</h3>
-                  <p className="text-xs text-green-200 mt-1">Tendências e oportunidades para este ano</p>
-                </div>
-                <p className="text-green-100 text-sm leading-relaxed">
-                  {result.yearInterpretation}
-                </p>
+              <Card className="bg-purple-900/30 border-purple-400/30 p-6 md:col-span-2">
+                <h3 className="text-lg font-bold text-yellow-300 mb-3">📅 Ano Pessoal</h3>
+                <p className="text-4xl font-bold text-pink-400 mb-4">{result.personalYearNumber}</p>
+                <p className="text-purple-200 leading-relaxed">{result.personalYearInterpretation}</p>
               </Card>
             </div>
 
-            {/* Summary Card */}
-            <Card className="bg-gradient-to-br from-indigo-900/40 to-purple-900/40 border-indigo-400/50 p-6">
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="bg-indigo-950/60 p-4 rounded-lg border border-indigo-500/20">
-                  <p className="text-indigo-400 font-semibold text-sm">Nome Consultado</p>
-                  <p className="text-lg font-bold text-indigo-100 mt-2">{result.fullName || "N/A"}</p>
-                </div>
-                <div className="bg-indigo-950/60 p-4 rounded-lg border border-indigo-500/20">
-                  <p className="text-indigo-400 font-semibold text-sm">Data de Nascimento</p>
-                  <p className="text-lg font-bold text-indigo-100 mt-2">
-                    {result.birthDate ? new Date(result.birthDate + "T00:00:00").toLocaleDateString("pt-BR") : "N/A"}
-                  </p>
-                </div>
-              </div>
-              <div className="bg-indigo-950/60 p-4 rounded-lg border border-indigo-500/20">
-                <p className="text-indigo-400 font-semibold text-sm mb-2">Valor da Consulta</p>
-                <p className="text-2xl font-bold text-indigo-300">R$ {typeof result.price === 'number' ? result.price.toFixed(2) : '25.00'}</p>
-              </div>
-            </Card>
-
-            {/* Payment Section */}
-            <Card className="bg-gradient-to-br from-yellow-900/40 to-orange-900/40 border-yellow-400/50 p-6">
-              <h3 className="text-lg font-bold mb-3 text-yellow-300">💳 Confirmar Consulta</h3>
-              <p className="text-yellow-100 mb-4 text-sm">
-                Para confirmar esta leitura numerológica e apoiar nosso trabalho espiritual:
-              </p>
-              <div className="text-2xl font-bold text-yellow-300 mb-4">R$ {typeof result.price === 'number' ? result.price.toFixed(2) : '25.00'}</div>
-              <Button
-                onClick={async () => {
-                  if (!readingId) return;
-                  setIsProcessingPayment(true);
-                  try {
-                    const paymentResult = await createPaymentPreference.mutateAsync({
-                      consultationType: "numerology",
-                      amount: typeof result.price === 'number' ? result.price : 25.00,
-                      description: "Leitura Numerológica Completa",
-                      consultationId: readingId,
-                    });
-                    if (paymentResult.initPoint) {
-                      localStorage.setItem("pendingPaymentId", paymentResult.paymentId);
-                      window.location.href = paymentResult.initPoint;
-                    }
-                  } catch (error) {
-                    console.error("Erro ao processar pagamento:", error);
-                    alert("Erro ao processar pagamento. Tente novamente.");
-                  } finally {
-                    setIsProcessingPayment(false);
-                  }
-                }}
-                disabled={isProcessingPayment}
-                className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold py-2 px-4 rounded-lg"
-              >
-                {isProcessingPayment ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Processando...
-                  </>
-                ) : (
-                  "Pagar com Mercado Pago"
-                )}
-              </Button>
-            </Card>
-
-            {/* Action Button */}
+            {/* New Reading Button */}
             <Button
-              onClick={handleNewReading}
-              className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-lg py-6"
+              onClick={() => {
+                setFullName("");
+                setBirthDate("");
+                setStage("form");
+                setResult(null);
+                setReadingId(null);
+                window.history.replaceState({}, "", "/numerology");
+              }}
+              className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-lg py-6"
             >
-              Gerar Nova Leitura
+              Nova Leitura
             </Button>
-
-            {/* History */}
-            <Card className="bg-purple-900/30 border-purple-400/30 p-6">
-              <h3 className="text-lg font-bold text-purple-300 mb-4">Histórico</h3>
-              {listReadings.data && listReadings.data.length > 0 ? (
-                <div className="space-y-3 max-h-64 overflow-y-auto">
-                  {listReadings.data.map((reading: any) => (
-                    <div key={reading.id} className="bg-purple-950/40 p-3 rounded border border-purple-500/20">
-                      <p className="text-purple-200 font-semibold">{reading.fullName}</p>
-                      <p className="text-xs text-purple-400 mt-2">
-                        {reading.createdAt ? new Date(reading.createdAt).toLocaleDateString("pt-BR") : ""}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-purple-400">Nenhuma leitura realizada ainda.</p>
-              )}
-            </Card>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Info Section */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* What Numerology Shows */}
-              <Card className="bg-purple-900/30 border-purple-400/30 p-6">
-                <h2 className="text-2xl font-bold text-yellow-300 mb-6 flex items-center gap-2">
-                  <Sparkles className="w-6 h-6" />
-                  O que a Numerologia Mostra
-                </h2>
-                <div className="space-y-4">
-                  <div className="flex gap-4">
-                    <div className="text-2xl">📍</div>
-                    <div>
-                      <h3 className="font-bold text-yellow-300">Número de Destino</h3>
-                      <p className="text-sm text-purple-200">Revela a missão de vida, o propósito e os desafios que você veio enfrentar.</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-4">
-                    <div className="text-2xl">💖</div>
-                    <div>
-                      <h3 className="font-bold text-pink-300">Número da Alma</h3>
-                      <p className="text-sm text-purple-200">Indica seus desejos mais profundos e emoções ocultas.</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-4">
-                    <div className="text-2xl">🎭</div>
-                    <div>
-                      <h3 className="font-bold text-purple-300">Número da Personalidade</h3>
-                      <p className="text-sm text-purple-200">Mostra como você é percebido pelos outros.</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-4">
-                    <div className="text-2xl">🗣️</div>
-                    <div>
-                      <h3 className="font-bold text-cyan-300">Número de Expressão</h3>
-                      <p className="text-sm text-purple-200">Mostra como você se expressa e se manifesta no mundo.</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-4">
-                    <div className="text-2xl">📅</div>
-                    <div>
-                      <h3 className="font-bold text-green-300">Ano Pessoal</h3>
-                      <p className="text-sm text-purple-200">Mostra tendências e oportunidades para o ano em curso.</p>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-
-              {/* Form Section */}
-              <Card className="bg-purple-900/30 border-purple-400/30 p-6">
-                <h3 className="text-xl font-bold text-yellow-300 mb-6">Seus Dados</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-yellow-300 mb-2">
-                      Nome Completo (como registrado em documentos)
-                    </label>
-                    <Input
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      placeholder="Ex: João da Silva Santos"
-                      className="bg-yellow-950/50 border-yellow-500/30 text-white placeholder-yellow-400/50 focus:border-yellow-400"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-yellow-300 mb-2">
-                      Data de Nascimento (DD/MM/YYYY)
-                    </label>
-                    <Input
-                      type="text"
-                      placeholder="DD/MM/YYYY (ex: 15/05/1990)"
-                      value={birthDate}
-                      onChange={(e) => {
-                        let value = e.target.value;
-                        // Remover caracteres não numéricos
-                        value = value.replace(/\D/g, '');
-                        // Adicionar barras automaticamente
-                        if (value.length <= 2) {
-                          setBirthDate(value);
-                        } else if (value.length <= 4) {
-                          setBirthDate(value.slice(0, 2) + '/' + value.slice(2));
-                        } else if (value.length <= 8) {
-                          setBirthDate(value.slice(0, 2) + '/' + value.slice(2, 4) + '/' + value.slice(4, 8));
-                        } else {
-                          setBirthDate(value.slice(0, 2) + '/' + value.slice(2, 4) + '/' + value.slice(4, 8));
-                        }
-                      }}
-                      maxLength={10}
-                      className="bg-yellow-950/50 border-yellow-500/30 text-white placeholder-yellow-400/50 focus:border-yellow-400"
-                    />
-                  </div>
-
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={createReading.isPending || !fullName.trim() || !birthDate}
-                    className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-lg py-6 mt-4"
-                  >
-                    {createReading.isPending ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Gerando Leitura...
-                      </>
-                    ) : (
-                      "Gerar Leitura Numerológica"
-                    )}
-                  </Button>
-                </div>
-              </Card>
-            </div>
-
-            {/* History Sidebar */}
-            <div>
-              <Card className="bg-purple-900/30 border-purple-400/30 p-6 sticky top-8">
-                <h3 className="text-lg font-bold text-purple-300 mb-4">Histórico</h3>
-                {listReadings.data && listReadings.data.length > 0 ? (
-                  <div className="space-y-3 max-h-96 overflow-y-auto">
-                    {listReadings.data.map((reading: any) => (
-                      <div key={reading.id} className="bg-purple-950/40 p-3 rounded border border-purple-500/20">
-                        <p className="text-purple-200 font-semibold text-sm">{reading.fullName}</p>
-                        <p className="text-xs text-purple-400 mt-2">
-                          {reading.createdAt ? new Date(reading.createdAt).toLocaleDateString("pt-BR") : ""}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-purple-400">Nenhuma leitura realizada ainda.</p>
-                )}
-              </Card>
-            </div>
           </div>
         )}
-
-        {/* Info */}
-        <div className="mt-8 bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-6">
-          <p className="text-yellow-200">
-            🔢 A numerologia é uma ciência ancestral que revela os padrões ocultos do universo através dos números. Cada número carrega uma vibração única que influencia sua vida, personalidade e destino. Insira seu nome completo e data de nascimento para descobrir os números que definem sua jornada.
-          </p>
-        </div>
       </main>
     </div>
   );
