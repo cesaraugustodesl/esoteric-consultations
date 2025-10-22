@@ -130,8 +130,10 @@ export default function Tarot() {
         window.location.href = result.initPoint;
       }
     } catch (error) {
-      console.error("Erro ao processar pagamento:", error);
-      alert("Erro ao processar pagamento. Tente novamente.");
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error("Erro ao processar pagamento:", errorMessage);
+      console.error("Erro completo:", error);
+      alert(`Erro ao processar pagamento: ${errorMessage}`);
     } finally {
       setIsProcessing(false);
     }

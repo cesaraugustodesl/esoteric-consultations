@@ -1,4 +1,4 @@
-import { router, publicProcedure } from "./_core/trpc";
+import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { getDb } from "./db";
 import { payments } from "../drizzle/schema";
@@ -9,7 +9,7 @@ const MERCADO_PAGO_PUBLIC_KEY = process.env.MERCADO_PAGO_PUBLIC_KEY;
 
 export const paymentRouter = router({
   // Criar preferência de pagamento no Mercado Pago
-  createPreference: publicProcedure
+  createPreference: protectedProcedure
     .input(
       z.object({
         consultationType: z.enum(["tarot", "astral", "oracle", "numerology"]),
@@ -23,7 +23,38 @@ export const paymentRouter = router({
         throw new Error("Usuário não autenticado");
       }
 
+      // Validar token de acesso
+      if (!MERCADO_PAGO_ACCESS_TOKEN) {
+        console.error("MERCADO_PAGO_ACCESS_TOKEN não configurado");
+        throw new Error("Configuração de pagamento não disponível");
+      }
+
       try {
+        const baseUrl = process.env.VITE_APP_URL || "http://localhost:3000";
+        
+        const payloadBody = {
+          items: [
+            {
+              title: input.description,
+              quantity: 1,
+              unit_price: input.amount,
+            },
+          ],
+          payer: {
+            email: ctx.user.email || "customer@example.com",
+            name: ctx.user.name || "Cliente",
+          },
+          back_urls: {
+            success: `${baseUrl}/payment/success`,
+            failure: `${baseUrl}/payment/failure`,
+            pending: `${baseUrl}/payment/pending`,
+          },
+          external_reference: input.consultationId,
+          notification_url: `${baseUrl}/api/payment-webhook`,
+        };
+
+        console.log("Enviando preferência ao Mercado Pago:", { consultationId: input.consultationId, amount: input.amount });
+
         const response = await fetch(
           "https://api.mercadopago.com/checkout/preferences",
           {
@@ -32,35 +63,30 @@ export const paymentRouter = router({
               "Content-Type": "application/json",
               Authorization: `Bearer ${MERCADO_PAGO_ACCESS_TOKEN}`,
             },
-            body: JSON.stringify({
-              items: [
-                {
-                  title: input.description,
-                  quantity: 1,
-                  unit_price: input.amount,
-                },
-              ],
-              payer: {
-                email: ctx.user.email || "customer@example.com",
-                name: ctx.user.name || "Cliente",
-              },
-              back_urls: {
-                success: `${process.env.VITE_APP_URL || "http://localhost:3000"}/payment/success`,
-                failure: `${process.env.VITE_APP_URL || "http://localhost:3000"}/payment/failure`,
-                pending: `${process.env.VITE_APP_URL || "http://localhost:3000"}/payment/pending`,
-              },
-              auto_return: "approved",
-              external_reference: input.consultationId,
-              notification_url: `${process.env.VITE_APP_URL || "http://localhost:3000"}/api/payment-webhook`,
-            }),
+            body: JSON.stringify(payloadBody),
           }
         );
 
+        const responseText = await response.text();
+        console.log("Resposta do Mercado Pago:", { status: response.status, bodyLength: responseText.length });
+
         if (!response.ok) {
-          throw new Error("Falha ao criar preferência de pagamento");
+          console.error("Erro na resposta do Mercado Pago:", responseText);
+          throw new Error(`Falha ao criar preferência: ${response.status} - ${responseText}`);
         }
 
-        const preference = await response.json();
+        let preference;
+        try {
+          preference = JSON.parse(responseText);
+        } catch (e) {
+          console.error("Erro ao parsear resposta JSON:", responseText);
+          throw new Error("Resposta inválida do Mercado Pago");
+        }
+
+        if (!preference.id || !preference.init_point) {
+          console.error("Resposta do Mercado Pago sem init_point:", preference);
+          throw new Error("Resposta incompleta do Mercado Pago");
+        }
 
         // Salvar pagamento pendente no banco
         const db = await getDb();
@@ -77,19 +103,22 @@ export const paymentRouter = router({
           status: "pending",
         });
 
+        console.log("Pagamento criado com sucesso:", { paymentId, preferenceId: preference.id });
+
         return {
           preferenceId: preference.id,
           initPoint: preference.init_point,
           paymentId,
         };
       } catch (error) {
-        console.error("Erro ao criar preferência:", error);
-        throw new Error("Erro ao processar pagamento");
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error("Erro ao criar preferência:", errorMessage);
+        throw new Error(`Erro ao processar pagamento: ${errorMessage}`);
       }
     }),
 
   // Verificar status do pagamento
-  checkPaymentStatus: publicProcedure
+  checkPaymentStatus: protectedProcedure
     .input(z.object({ paymentId: z.string() }))
     .query(async ({ ctx, input }) => {
       if (!ctx.user) {
