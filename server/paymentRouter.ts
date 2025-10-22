@@ -1,0 +1,214 @@
+import { router, publicProcedure } from "./_core/trpc";
+import { z } from "zod";
+import { getDb } from "./db";
+import { payments } from "../drizzle/schema";
+import { eq } from "drizzle-orm";
+
+const MERCADO_PAGO_ACCESS_TOKEN = process.env.MERCADO_PAGO_ACCESS_TOKEN;
+const MERCADO_PAGO_PUBLIC_KEY = process.env.MERCADO_PAGO_PUBLIC_KEY;
+
+export const paymentRouter = router({
+  // Criar preferência de pagamento no Mercado Pago
+  createPreference: publicProcedure
+    .input(
+      z.object({
+        consultationType: z.enum(["tarot", "astral", "oracle", "numerology"]),
+        amount: z.number().positive(),
+        description: z.string(),
+        consultationId: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new Error("Usuário não autenticado");
+      }
+
+      try {
+        const response = await fetch(
+          "https://api.mercadopago.com/checkout/preferences",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${MERCADO_PAGO_ACCESS_TOKEN}`,
+            },
+            body: JSON.stringify({
+              items: [
+                {
+                  title: input.description,
+                  quantity: 1,
+                  unit_price: input.amount,
+                },
+              ],
+              payer: {
+                email: ctx.user.email || "customer@example.com",
+                name: ctx.user.name || "Cliente",
+              },
+              back_urls: {
+                success: `${process.env.VITE_APP_URL || "http://localhost:3000"}/payment/success`,
+                failure: `${process.env.VITE_APP_URL || "http://localhost:3000"}/payment/failure`,
+                pending: `${process.env.VITE_APP_URL || "http://localhost:3000"}/payment/pending`,
+              },
+              auto_return: "approved",
+              external_reference: input.consultationId,
+              notification_url: `${process.env.VITE_APP_URL || "http://localhost:3000"}/api/payment-webhook`,
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Falha ao criar preferência de pagamento");
+        }
+
+        const preference = await response.json();
+
+        // Salvar pagamento pendente no banco
+        const db = await getDb();
+        if (!db) throw new Error("Banco de dados não disponível");
+        
+        const paymentId = `payment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        await db.insert(payments).values({
+          id: paymentId,
+          userId: ctx.user.id,
+          consultationId: input.consultationId,
+          amount: input.amount.toString(),
+          paymentMethod: "mercado_pago",
+          externalPaymentId: preference.id,
+          status: "pending",
+        });
+
+        return {
+          preferenceId: preference.id,
+          initPoint: preference.init_point,
+          paymentId,
+        };
+      } catch (error) {
+        console.error("Erro ao criar preferência:", error);
+        throw new Error("Erro ao processar pagamento");
+      }
+    }),
+
+  // Verificar status do pagamento
+  checkPaymentStatus: publicProcedure
+    .input(z.object({ paymentId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new Error("Usuário não autenticado");
+      }
+
+      try {
+        const db = await getDb();
+        if (!db) throw new Error("Banco de dados não disponível");
+        
+        const payment = await db.select().from(payments).where(eq(payments.id, input.paymentId)).limit(1);
+        const paymentRecord = payment[0];
+
+        if (!paymentRecord || paymentRecord.userId !== ctx.user.id) {
+          throw new Error("Pagamento não encontrado");
+        }
+
+        // Se o pagamento já foi aprovado, retornar status
+        if (paymentRecord.status === "approved") {
+          return {
+            status: "approved",
+            paymentId: input.paymentId,
+          };
+        }
+
+        // Verificar status no Mercado Pago
+        if (paymentRecord.externalPaymentId) {
+          const response = await fetch(
+            `https://api.mercadopago.com/v1/payments/search?external_reference=${paymentRecord.consultationId}`,
+            {
+              headers: {
+                Authorization: `Bearer ${MERCADO_PAGO_ACCESS_TOKEN}`,
+              },
+            }
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.results && data.results.length > 0) {
+              const mpPayment = data.results[0];
+              const status = mpPayment.status;
+
+              // Atualizar status no banco se aprovado
+              if (status === "approved") {
+                const db = await getDb();
+                if (db) {
+                  await db
+                    .update(payments)
+                    .set({ status: "approved" })
+                    .where(eq(payments.id, input.paymentId));
+                }
+
+                return {
+                  status: "approved",
+                  paymentId: input.paymentId,
+                };
+              }
+            }
+          }
+        }
+
+        return {
+          status: paymentRecord.status,
+          paymentId: input.paymentId,
+        };
+      } catch (error) {
+        console.error("Erro ao verificar pagamento:", error);
+        throw new Error("Erro ao verificar pagamento");
+      }
+    }),
+
+  // Webhook para receber notificações do Mercado Pago
+  webhook: publicProcedure
+    .input(
+      z.object({
+        type: z.string().optional(),
+        data: z.object({ id: z.string() }).optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      if (input.type === "payment" && input.data?.id) {
+        try {
+          const response = await fetch(
+            `https://api.mercadopago.com/v1/payments/${input.data.id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${MERCADO_PAGO_ACCESS_TOKEN}`,
+              },
+            }
+          );
+
+          if (response.ok) {
+            const mpPayment = await response.json();
+
+            if (mpPayment.status === "approved" && mpPayment.external_reference) {
+              // Encontrar e atualizar o pagamento
+              const db = await getDb();
+              if (!db) return { success: true };
+              
+              const paymentList = await db.select().from(payments).where(eq(payments.consultationId, mpPayment.external_reference)).limit(1);
+              const payment = paymentList[0];
+
+              if (payment) {
+                const db2 = await getDb();
+                if (db2) {
+                  await db2
+                    .update(payments)
+                    .set({ status: "approved" })
+                    .where(eq(payments.id, payment.id));
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Erro ao processar webhook:", error);
+        }
+      }
+
+      return { success: true };
+    }),
+});
+

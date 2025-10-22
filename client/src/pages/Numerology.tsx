@@ -289,7 +289,7 @@ export default function Numerology() {
                           setBirthDate(value.slice(0, 2) + '/' + value.slice(2, 4) + '/' + value.slice(4, 8));
                         }
                       }}
-                      maxLength="10"
+                      maxLength={10}
                       className="bg-yellow-950/50 border-yellow-500/30 text-white placeholder-yellow-400/50 focus:border-yellow-400"
                     />
                   </div>

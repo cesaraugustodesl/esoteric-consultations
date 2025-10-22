@@ -17,9 +17,11 @@ export default function Tarot() {
   const [submitted, setSubmitted] = useState(false);
   const [response, setResponse] = useState<string | null>(null);
   const [consultationId, setConsultationId] = useState<string | null>(null);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const createConsultation = trpc.tarot.createConsultation.useMutation();
   const generateResponses = trpc.tarot.generateResponses.useMutation();
+  const createPaymentPreference = trpc.payment.createPreference.useMutation();
 
   const prices: Record<number, string> = {
     1: "3.00",
@@ -64,6 +66,31 @@ export default function Tarot() {
     } catch (error) {
       console.error("Erro ao consultar Tarot:", error);
       alert("Erro ao consultar. Tente novamente.");
+    }
+  };
+
+  const handlePayment = async () => {
+    if (!consultationId) return;
+
+    setIsProcessingPayment(true);
+    try {
+      const result = await createPaymentPreference.mutateAsync({
+        consultationType: "tarot",
+        amount: parseFloat(prices[numberOfQuestions]),
+        description: `Leitura de Tarot - ${numberOfQuestions} pergunta(s)`,
+        consultationId,
+      });
+
+      // Redirecionar para Mercado Pago
+      if (result.initPoint) {
+        localStorage.setItem("pendingPaymentId", result.paymentId);
+        window.location.href = result.initPoint;
+      }
+    } catch (error) {
+      console.error("Erro ao processar pagamento:", error);
+      alert("Erro ao processar pagamento. Tente novamente.");
+    } finally {
+      setIsProcessingPayment(false);
     }
   };
 
@@ -215,6 +242,31 @@ export default function Tarot() {
                   )}
                 </div>
 
+                {/* Payment Section */}
+                <Card className="bg-gradient-to-br from-yellow-900/40 to-orange-900/40 border-yellow-400/50 p-8">
+                  <h3 className="text-xl font-bold mb-4 text-yellow-300">💳 Confirmar Consulta</h3>
+                  <p className="text-purple-100 mb-6">
+                    Para confirmar esta leitura e apoiar nosso trabalho espiritual, realize o pagamento:
+                  </p>
+                  <div className="text-3xl font-bold text-yellow-300 mb-6">
+                    R$ {prices[numberOfQuestions]}
+                  </div>
+                  <Button
+                    onClick={handlePayment}
+                    disabled={isProcessingPayment}
+                    className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold py-3 px-4 rounded-lg transition duration-200"
+                  >
+                    {isProcessingPayment ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Processando...
+                      </>
+                    ) : (
+                      "Pagar com Mercado Pago"
+                    )}
+                  </Button>
+                </Card>
+
                 <Button
                   onClick={() => {
                     setSubmitted(false);
@@ -222,6 +274,7 @@ export default function Tarot() {
                     setContext("");
                     setQuestions(["", "", "", "", ""]);
                     setNumberOfQuestions(1);
+                    setConsultationId(null);
                   }}
                   className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-lg py-6 mt-6"
                 >
@@ -248,6 +301,10 @@ export default function Tarot() {
                   <p className="font-bold text-purple-300 mb-1">3. Leitura</p>
                   <p>Receba respostas profundas do plano espiritual</p>
                 </div>
+                <div>
+                  <p className="font-bold text-purple-300 mb-1">4. Pagamento</p>
+                  <p>Confirme a consulta com segurança</p>
+                </div>
                 <div className="pt-4 border-t border-purple-500/30">
                   <p className="font-bold text-purple-300 mb-2">Tabela de Preços</p>
                   <div className="space-y-1 text-purple-300">
@@ -267,7 +324,7 @@ export default function Tarot() {
           <p className="text-purple-200">
             🔮 Cada leitura de Tarot é uma jornada de autoconhecimento. As respostas vêm do plano espiritual,
             trazendo orientação profunda e intuitiva para suas questões mais importantes. Você pode explorar
-            livremente. O cadastro e pagamento são necessários apenas quando deseja confirmar uma consulta.
+            livremente. O pagamento é opcional e serve para confirmar sua consulta.
           </p>
         </div>
       </main>

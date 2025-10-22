@@ -27,6 +27,7 @@ import { notifyOwner } from "./_core/notification";
 import { createPaymentPreference } from "./payment";
 import { generateAstralMapPDF } from "./pdf";
 import { numerologyRouter } from "./numerologyRouter";
+import { paymentRouter } from "./paymentRouter";
 
 export const appRouter = router({
   system: systemRouter,
@@ -417,6 +418,8 @@ Sua resposta deve:
    * Energy Guidance (Free)
    */
   numerology: numerologyRouter,
+
+  payment: paymentRouter,
 
   energy: router({
     getGuidance: publicProcedure
